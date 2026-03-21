@@ -1,39 +1,12 @@
 // netlify/functions/create-item.js
 //
 // POST — Create a new item in Items DB AND all its initial task rows in Tasks DB.
-//
-// Request body:
-// {
-//   title: string,
-//   type: string,             // "kdp" | "etsy" | "app"
-//   etype: string,            // Etsy product type (if type=etsy)
-//   edition: string,          // "His" | "Hers" | "Ours" | "None" | ""
-//   projectNotionId: string,
-//   collectionNotionId: string | null,
-//   monthName: string,        // KDP only
-//   monthNumber: number,      // KDP only
-//   stages: [
-//     {
-//       name: string,
-//       tasks: [{ text: string }]
-//     }
-//   ]
-// }
-//
-// Response:
-// {
-//   notionId: string,
-//   tasks: [{ text, stageIndex, taskIndex, notionId }]
-// }
+// Tasks are created in small batches with a delay to stay within Notion rate limits.
 
 const { notion, DB } = require("./_shared/notion-client");
 const { itemToNotionProperties, taskToNotionProperties, jsonResponse } = require("./_shared/transformers");
 
-// Capitalize first letter — Notion Select values are Title Case
-function capitalize(str) {
-  if (!str) return str;
-  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
-}
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") {
@@ -63,14 +36,10 @@ exports.handler = async (event) => {
   if (!projectNotionId) return jsonResponse(400, { error: "projectNotionId is required" });
 
   try {
-    // -------------------------------------------------------------------------
-    // 1. Derive initial status and current stage from the stages array.
-    // -------------------------------------------------------------------------
+    // 1. Derive initial stage name
     const firstStageName = stages.length > 0 ? stages[0].name : "Concept";
 
-    // -------------------------------------------------------------------------
     // 2. Build item properties
-    // -------------------------------------------------------------------------
     const itemProps = itemToNotionProperties({
       title,
       type,
@@ -83,53 +52,46 @@ exports.handler = async (event) => {
       ...(monthNumber !== null && { monthNumber }),
     });
 
-    // Add relations
     itemProps.Project = { relation: [{ id: projectNotionId }] };
     if (collectionNotionId) {
       itemProps.Collection = { relation: [{ id: collectionNotionId }] };
     }
 
-    // -------------------------------------------------------------------------
-    // 3. Create the item page in Notion
-    // -------------------------------------------------------------------------
+    // 3. Create the item page
     const itemPage = await notion.pages.create({
       parent: { database_id: DB.items },
       properties: itemProps,
     });
-
     const itemNotionId = itemPage.id;
 
-    // -------------------------------------------------------------------------
-    // 4. Create task rows — one Notion page per task.
-    //    We create them stageIndex × taskIndex, batched 10 at a time to avoid
-    //    hammering the API (Notion rate limit: 3 req/sec average, bursts ok).
-    // -------------------------------------------------------------------------
-    const taskMeta = []; // { stageIndex, taskIndex, text, notionId }
+    // 4. Flatten all tasks
     const taskCreateJobs = [];
-
     for (let si = 0; si < stages.length; si++) {
       const stage = stages[si];
       for (let ti = 0; ti < stage.tasks.length; ti++) {
-        const task = stage.tasks[ti];
-        taskCreateJobs.push({ si, ti, text: task.text });
+        taskCreateJobs.push({ si, ti, text: stage.tasks[ti].text });
       }
     }
 
-    // Process in batches of 10
-    const BATCH = 10;
+    // 5. Create tasks in batches of 5 with a 300ms pause between batches
+    //    Keeps us well inside Notion's 3 req/s average rate limit
+    const taskMeta = [];
+    const BATCH = 5;
+    const DELAY_MS = 300;
+
     for (let i = 0; i < taskCreateJobs.length; i += BATCH) {
+      if (i > 0) await sleep(DELAY_MS);
       const batch = taskCreateJobs.slice(i, i + BATCH);
       const created = await Promise.all(
         batch.map(({ si, ti, text }) => {
           const taskProps = taskToNotionProperties({
             text,
-            done:        false,
-            stageName:   stages[si].name,
-            stageOrder:  si,
-            taskOrder:   ti,
+            done:       false,
+            stageName:  stages[si].name,
+            stageOrder: si,
+            taskOrder:  ti,
           });
           taskProps.Item = { relation: [{ id: itemNotionId }] };
-
           return notion.pages.create({
             parent: { database_id: DB.tasks },
             properties: taskProps,
@@ -139,9 +101,6 @@ exports.handler = async (event) => {
       taskMeta.push(...created);
     }
 
-    // -------------------------------------------------------------------------
-    // 5. Return item notionId + flat task map for the app to store
-    // -------------------------------------------------------------------------
     return jsonResponse(200, {
       notionId: itemNotionId,
       tasks: taskMeta.map(({ text, si, ti, notionId }) => ({
