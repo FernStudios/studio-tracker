@@ -984,10 +984,10 @@ async function doCreateProj(){
   closeModal('proj');syncStart();
   try{
     const ref=await fdb.collection('projects').add({
-      title:t,desc,collapsed:false,
+      title:t,desc,collapsed:true,
       createdAt:firebase.firestore.FieldValue.serverTimestamp()
     });
-    const p={id:ref.id,title:t,desc,collapsed:false,collections:[],items:[]};
+    const p={id:ref.id,title:t,desc,collapsed:true,collections:[],items:[]};
     DB.projects.push(p);
     SEL={type:'proj',projId:p.id,collId:null,itemId:null};renderAll();syncDone();
   }catch(err){syncFail('Could not create project: '+err.message);}
@@ -1001,10 +1001,10 @@ async function doCreateColl(){
   closeModal('coll');syncStart();
   try{
     const ref=await fdb.collection('collections').add({
-      title:t,projectId:pr.id,sortOrder,collapsed:false,
+      title:t,projectId:pr.id,sortOrder,collapsed:true,
       createdAt:firebase.firestore.FieldValue.serverTimestamp()
     });
-    const c={id:ref.id,title:t,desc:'',collapsed:false,items:[],projectId:pr.id,sortOrder};
+    const c={id:ref.id,title:t,desc:'',collapsed:true,items:[],projectId:pr.id,sortOrder};
     pr.collections.push(c);
     SEL={type:'coll',projId:pendingProjId,collId:c.id,itemId:null};renderAll();syncDone();
   }catch(err){syncFail('Could not create collection: '+err.message);}
@@ -1287,6 +1287,51 @@ function renderMain(){
   }
 }
 
+
+// ── PERF ROLLUP HELPERS ──
+function rollupPerf(items){
+  // Returns aggregated perf stats across an array of items
+  let totalPeriodRev=0,totalPeriodUnits=0,totalAdSpend=0,totalAdRev=0;
+  let latestCRev=0,latestCUnits=0,totalRating=0,ratingCount=0,totalReviews=0;
+  items.forEach(item=>{
+    const logs=(item.perf&&item.perf.logs)||[];
+    logs.forEach(l=>{
+      totalPeriodRev+=parseFloat(l.rev)||0;
+      totalPeriodUnits+=parseInt(l.units)||0;
+      totalAdSpend+=parseFloat(l.adspend)||0;
+      totalAdRev+=parseFloat(l.adrev)||0;
+    });
+    if(logs.length){
+      const last=logs[logs.length-1];
+      latestCRev+=parseFloat(last.crev)||0;
+      latestCUnits+=parseInt(last.cunits)||0;
+      if(last.rating&&parseFloat(last.rating)>0){totalRating+=parseFloat(last.rating);ratingCount++;}
+      totalReviews+=parseInt(last.reviews)||0;
+    }
+  });
+  const roas=totalAdSpend>0?(totalAdRev/totalAdSpend).toFixed(2)+'x':'—';
+  const avgRating=ratingCount>0?(totalRating/ratingCount).toFixed(1):'—';
+  const hasData=latestCRev>0||totalPeriodRev>0||totalPeriodUnits>0;
+  return {totalPeriodRev,totalPeriodUnits,totalAdSpend,totalAdRev,
+          latestCRev,latestCUnits,roas,avgRating,totalReviews,hasData};
+}
+
+function renderPerfRollup(perf,accentColor){
+  if(!perf.hasData) return '';
+  const c=accentColor||'var(--lav)';
+  return `<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--bdrl)">
+    <div style="font-size:.65rem;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--txtmu);margin-bottom:8px">Performance Rollup</div>
+    <div class="stats-grid" style="grid-template-columns:repeat(auto-fill,minmax(110px,1fr))">
+      ${perf.latestCRev>0?`<div class="sc"><div class="sc-l">Cumul. Revenue</div><div class="sc-v" style="color:${c};font-size:1rem">$${perf.latestCRev.toFixed(2)}</div></div>`:''}
+      ${perf.latestCUnits>0?`<div class="sc"><div class="sc-l">Cumul. Units</div><div class="sc-v" style="font-size:1rem">${perf.latestCUnits}</div></div>`:''}
+      ${perf.totalPeriodRev>0?`<div class="sc"><div class="sc-l">Period Revenue</div><div class="sc-v" style="font-size:1rem">$${perf.totalPeriodRev.toFixed(2)}</div></div>`:''}
+      ${perf.totalPeriodUnits>0?`<div class="sc"><div class="sc-l">Period Units</div><div class="sc-v" style="font-size:1rem">${perf.totalPeriodUnits}</div></div>`:''}
+      ${perf.avgRating!=='—'?`<div class="sc"><div class="sc-l">Avg Rating</div><div class="sc-v" style="font-size:1rem">★ ${perf.avgRating}</div><div class="sc-s">${perf.totalReviews} reviews</div></div>`:''}
+      ${perf.totalAdSpend>0?`<div class="sc"><div class="sc-l">ROAS</div><div class="sc-v" style="font-size:1rem">${perf.roas}</div><div class="sc-s">$${perf.totalAdSpend.toFixed(2)} spent</div></div>`:''}
+    </div>
+  </div>`;
+}
+
 function renderProjDash(el,pr){
   const pct=projPct(pr);
   const allItems=[];(pr.collections||[]).forEach(c=>(c.items||[]).forEach(i=>allItems.push(i)));
@@ -1296,8 +1341,28 @@ function renderProjDash(el,pr){
   const directItems=pr.items||[];
   let h=`<div class="dash-hdr"><div class="dash-top"><div>
     <div class="dash-badge badge-proj">✦ Project</div>
-    <div class="dash-title">${esc(pr.title)}</div>
-    ${pr.desc?`<div class="dash-sub">${esc(pr.desc)}</div>`:''}
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="dash-title" id="proj-title-display-${pr.id}">${esc(pr.title)}</div>
+      <button onclick="startEditProj('${pr.id}')" title="Rename" style="background:none;border:none;cursor:pointer;color:var(--txtmu);font-size:.8rem;padding:2px 4px;opacity:.6">✏️</button>
+    </div>
+    <div id="proj-title-edit-${pr.id}" style="display:none;margin-top:4px">
+      <input id="proj-title-inp-${pr.id}" class="minp" style="font-size:1rem;font-family:'Playfair Display',serif" value="${esc(pr.title)}" onkeydown="if(event.key==='Enter')saveEditProj('${pr.id}');if(event.key==='Escape')cancelEditProj('${pr.id}')">
+      <div style="display:flex;gap:6px;margin-top:5px">
+        <button onclick="saveEditProj('${pr.id}')" class="btn-create" style="padding:6px 12px;font-size:.75rem">Save</button>
+        <button onclick="cancelEditProj('${pr.id}')" class="btn-cancel" style="padding:6px 12px;font-size:.75rem">Cancel</button>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:3px">
+      <div class="dash-sub" id="proj-desc-display-${pr.id}">${pr.desc?esc(pr.desc):'<span style="opacity:.4;font-style:italic">Add description…</span>'}</div>
+      <button onclick="startEditProjDesc('${pr.id}')" title="Edit description" style="background:none;border:none;cursor:pointer;color:var(--txtmu);font-size:.7rem;padding:2px 4px;opacity:.5">✏️</button>
+    </div>
+    <div id="proj-desc-edit-${pr.id}" style="display:none;margin-top:4px">
+      <input id="proj-desc-inp-${pr.id}" class="minp" style="font-size:.82rem" value="${esc(pr.desc||'')}" placeholder="Add description…" onkeydown="if(event.key==='Enter')saveEditProjDesc('${pr.id}');if(event.key==='Escape')cancelEditProjDesc('${pr.id}')">
+      <div style="display:flex;gap:6px;margin-top:5px">
+        <button onclick="saveEditProjDesc('${pr.id}')" class="btn-create" style="padding:6px 12px;font-size:.75rem">Save</button>
+        <button onclick="cancelEditProjDesc('${pr.id}')" class="btn-cancel" style="padding:6px 12px;font-size:.75rem">Cancel</button>
+      </div>
+    </div>
   </div><div class="ring-wrap">${ring(pct,62,5,'#b8955a','#ddd0e8')}<div class="ring-pct" style="color:var(--gold)">${pct}%</div></div></div>
   <div class="dash-stats">
     ${(pr.collections||[]).length?`<div class="ds"><div class="ds-v">${(pr.collections||[]).length}</div><div class="ds-l">Collections</div></div>`:''}
@@ -1315,6 +1380,7 @@ function renderProjDash(el,pr){
       <div class="card-badge" style="color:var(--lav)">📁 Collection</div>
       <div class="card-title">${esc(co.title)}</div>
       <div class="card-meta">${(co.items||[]).length} item${(co.items||[]).length===1?'':'s'}${kdpCount?` · ${kdpCount} KDP`:''}${etCount?` · ${etCount} Etsy`:''}</div>
+      ${(()=>{const cp=rollupPerf(co.items||[]);return cp.latestCRev>0?`<div style="font-size:.65rem;color:var(--sage);font-weight:700;margin-top:2px">$${cp.latestCRev.toFixed(2)} cumul.</div>`:'';})()} 
       <div class="card-bar"><div class="card-fill" style="width:${cpct}%;background:var(--lav)"></div></div>
       <div class="card-pct" style="color:var(--lav)">${cpct}%</div>
       ${edSet.length?`<div class="ed-pills">${edSet.map(e=>`<span class="ep ${epClass(e)}">${esc(e)}</span>`).join('')}</div>`:''}
@@ -1335,7 +1401,10 @@ function renderProjDash(el,pr){
   });
   h+=`<div class="card card-add" onclick="openModal('coll','${pr.id}')"><div class="card-add-ico" style="color:var(--lav)">+</div><div class="card-add-lbl" style="color:var(--lav)">Add Collection</div></div>`;
   h+=`<div class="card card-add" onclick="openModalDirectItem('${pr.id}')"><div class="card-add-ico" style="color:var(--sage)">+</div><div class="card-add-lbl" style="color:var(--sage)">Add Item Directly</div></div>`;
-  h+=`</div><div style="margin-top:14px"><button style="padding:8px 14px;border-radius:var(--rs);border:1.5px solid var(--bdr);background:transparent;color:var(--rose);font-family:'Nunito',sans-serif;font-size:.72rem;font-weight:600;cursor:pointer" onclick="deleteProj('${pr.id}')">Delete Project</button></div></div>`;
+  // Perf rollup — all items across all collections + direct items
+  const allItemsForPerf=[...allItems,...directItems];
+  const projPerf=rollupPerf(allItemsForPerf);
+  h+=`</div>${renderPerfRollup(projPerf,'var(--gold)')}<div style="margin-top:14px"><button style="padding:8px 14px;border-radius:var(--rs);border:1.5px solid var(--bdr);background:transparent;color:var(--rose);font-family:'Nunito',sans-serif;font-size:.72rem;font-weight:600;cursor:pointer" onclick="deleteProj('${pr.id}')">Delete Project</button></div></div>`;
   el.innerHTML=h;
 }
 
@@ -1345,8 +1414,28 @@ function renderCollDash(el,pr,co){
   const complete=items.filter(i=>itemPct(i)===100).length;
   let h=`<div class="dash-hdr"><div class="dash-top"><div>
     <div class="dash-badge badge-coll">📁 ${esc(pr.title)}</div>
-    <div class="dash-title">${esc(co.title)}</div>
-    ${co.desc?`<div class="dash-sub">${esc(co.desc)}</div>`:''}
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="dash-title" id="coll-title-display-${co.id}">${esc(co.title)}</div>
+      <button onclick="startEditColl('${pr.id}','${co.id}')" title="Rename" style="background:none;border:none;cursor:pointer;color:var(--txtmu);font-size:.8rem;padding:2px 4px;opacity:.6">✏️</button>
+    </div>
+    <div id="coll-title-edit-${co.id}" style="display:none;margin-top:4px">
+      <input id="coll-title-inp-${co.id}" class="minp" style="font-size:1rem;font-family:'Playfair Display',serif" value="${esc(co.title)}" onkeydown="if(event.key==='Enter')saveEditColl('${pr.id}','${co.id}');if(event.key==='Escape')cancelEditColl('${co.id}')">
+      <div style="display:flex;gap:6px;margin-top:5px">
+        <button onclick="saveEditColl('${pr.id}','${co.id}')" class="btn-create" style="padding:6px 12px;font-size:.75rem">Save</button>
+        <button onclick="cancelEditColl('${co.id}')" class="btn-cancel" style="padding:6px 12px;font-size:.75rem">Cancel</button>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:3px">
+      <div class="dash-sub" id="coll-desc-display-${co.id}">${co.desc?esc(co.desc):'<span style="opacity:.4;font-style:italic">Add description…</span>'}</div>
+      <button onclick="startEditCollDesc('${pr.id}','${co.id}')" title="Edit description" style="background:none;border:none;cursor:pointer;color:var(--txtmu);font-size:.7rem;padding:2px 4px;opacity:.5">✏️</button>
+    </div>
+    <div id="coll-desc-edit-${co.id}" style="display:none;margin-top:4px">
+      <input id="coll-desc-inp-${co.id}" class="minp" style="font-size:.82rem" value="${esc(co.desc||'')}" placeholder="Add description…" onkeydown="if(event.key==='Enter')saveEditCollDesc('${pr.id}','${co.id}');if(event.key==='Escape')cancelEditCollDesc('${co.id}')">
+      <div style="display:flex;gap:6px;margin-top:5px">
+        <button onclick="saveEditCollDesc('${pr.id}','${co.id}')" class="btn-create" style="padding:6px 12px;font-size:.75rem">Save</button>
+        <button onclick="cancelEditCollDesc('${co.id}')" class="btn-cancel" style="padding:6px 12px;font-size:.75rem">Cancel</button>
+      </div>
+    </div>
   </div><div class="ring-wrap">${ring(cpct,60,5,'#7c6ab5','#ddd0e8')}<div class="ring-pct">${cpct}%</div></div></div>
   <div class="dash-stats">
     <div class="ds"><div class="ds-v">${items.length}</div><div class="ds-l">Items</div></div>
@@ -1368,7 +1457,8 @@ function renderCollDash(el,pr,co){
     </div>`;
   });
   h+=`<div class="card card-add" onclick="openModal('item','${pr.id}','${co.id}')"><div class="card-add-ico" style="color:var(--sage)">+</div><div class="card-add-lbl" style="color:var(--sage)">Add Item</div></div>`;
-  h+=`</div><div style="margin-top:14px"><button style="padding:8px 14px;border-radius:var(--rs);border:1.5px solid var(--bdr);background:transparent;color:var(--rose);font-family:'Nunito',sans-serif;font-size:.72rem;font-weight:600;cursor:pointer" onclick="deleteColl('${pr.id}','${co.id}')">Delete Collection</button></div></div>`;
+  const collPerf=rollupPerf(items);
+  h+=`</div>${renderPerfRollup(collPerf,'var(--lav)')}<div style="margin-top:14px"><button style="padding:8px 14px;border-radius:var(--rs);border:1.5px solid var(--bdr);background:transparent;color:var(--rose);font-family:'Nunito',sans-serif;font-size:.72rem;font-weight:600;cursor:pointer" onclick="deleteColl('${pr.id}','${co.id}')">Delete Collection</button></div></div>`;
   el.innerHTML=h;
 }
 
@@ -1403,7 +1493,28 @@ function renderItemView(el,item){
       <span class="pb pb-${isKdp?'kdp':isApp?'kdp':'etsy'}" style="${isApp?'background:var(--gold-p);color:var(--gold);border-color:var(--gold-l)':''}">${isKdp?'📚 KDP':isApp?'📱 App':'🛍 Etsy'}${item.etype?' · '+item.etype:''}</span>
       ${item.edition?`<span class="pb ${pbEdClass(item.edition)}">${esc(item.edition)}</span>`:''}
     </div>
-    <div class="proj-title">${esc(item.title)}</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="proj-title" id="item-title-display-${item.id}">${esc(item.title)}</div>
+      <button onclick="startEditItem('${item.id}')" title="Rename" style="background:none;border:none;cursor:pointer;color:var(--txtmu);font-size:.8rem;padding:2px 4px;opacity:.6">✏️</button>
+    </div>
+    <div id="item-title-edit-${item.id}" style="display:none;margin-top:4px">
+      <input id="item-title-inp-${item.id}" class="minp" style="font-size:1rem;font-family:'Playfair Display',serif" value="${esc(item.title)}" onkeydown="if(event.key==='Enter')saveEditItem('${item.id}');if(event.key==='Escape')cancelEditItem('${item.id}')">
+      <div style="margin-top:5px">
+        <label style="font-size:.62rem;font-weight:800;color:var(--txtm);letter-spacing:.07em;text-transform:uppercase;display:block;margin-bottom:4px">Edition / Variant</label>
+        <select id="item-ed-inp-${item.id}" class="msel" style="font-size:.82rem;margin-bottom:6px" onchange="toggleItemEdCustom('${item.id}')">
+          <option value="">None</option>
+          <option value="Hers"${item.edition==='Hers'?' selected':''}>Hers</option>
+          <option value="His"${item.edition==='His'?' selected':''}>His</option>
+          <option value="Ours"${item.edition==='Ours'?' selected':''}>Ours</option>
+          <option value="custom"${item.edition&&!['Hers','His','Ours',''].includes(item.edition)?' selected':''}>Custom…</option>
+        </select>
+        <input id="item-ed-custom-${item.id}" class="minp" style="font-size:.82rem;display:${item.edition&&!['Hers','His','Ours',''].includes(item.edition)?'block':'none'};margin-bottom:6px" value="${item.edition&&!['Hers','His','Ours',''].includes(item.edition)?esc(item.edition):''}" placeholder="Custom edition…">
+      </div>
+      <div style="display:flex;gap:6px;margin-top:2px">
+        <button onclick="saveEditItem('${item.id}')" class="btn-create" style="padding:6px 12px;font-size:.75rem">Save</button>
+        <button onclick="cancelEditItem('${item.id}')" class="btn-cancel" style="padding:6px 12px;font-size:.75rem">Cancel</button>
+      </div>
+    </div>
     ${item.sub?`<div class="proj-sub">${esc(item.sub)}</div>`:''}
   </div><div class="ring-wrap">${ring(pct,56,5,color,'#ddd0e8')}<div class="ring-pct" style="color:${color}">${pct}%</div></div></div></div>
   <div class="vtabs">${tabs}</div>`;
@@ -1503,7 +1614,7 @@ function toggleTask(tid){
   const task=item.stages[activeStageIdx].tasks.find(t=>t.id===tid||t.notionId===tid);
   if(!task)return;
   task.done=!task.done;task.doneAt=task.done?Date.now():null;
-  renderMain(); // optimistic UI
+  renderAll(); // optimistic UI — renderAll keeps sidebar % in sync
   if(item.id){
     syncStart();
     const pct=itemPct(item);
@@ -2080,8 +2191,268 @@ function deleteTemplate(id){
   });
 }
 
+
+// ── INLINE EDITING ──
+
+// Helper to show/hide edit form
+function _showEdit(displayId, editId, inpId) {
+  document.getElementById(displayId).closest('div').style.display='none';
+  const editEl = document.getElementById(editId);
+  editEl.style.display='block';
+  const inp = document.getElementById(inpId);
+  if(inp){inp.focus();inp.select();}
+}
+function _hideEdit(displayParentId, editId) {
+  const editEl = document.getElementById(editId);
+  if(editEl) editEl.style.display='none';
+  // Re-render to restore display state cleanly
+  renderMain();
+}
+
+// ── PROJECT RENAME ──
+function startEditProj(id){
+  document.getElementById('proj-title-display-'+id).parentElement.style.display='none';
+  document.getElementById('proj-title-edit-'+id).style.display='block';
+  const inp=document.getElementById('proj-title-inp-'+id);
+  if(inp){inp.focus();inp.select();}
+}
+function cancelEditProj(id){renderMain();}
+function saveEditProj(id){
+  const inp=document.getElementById('proj-title-inp-'+id);
+  const val=inp?inp.value.trim():'';
+  if(!val)return;
+  const pr=DB.projects.find(p=>p.id===id);
+  if(!pr)return;
+  pr.title=val;
+  renderAll();
+  syncStart();
+  fdb.collection('projects').doc(id).update({title:val}).then(syncDone).catch(e=>syncFail('Rename failed: '+e.message));
+}
+
+// ── PROJECT DESC ──
+function startEditProjDesc(id){
+  document.getElementById('proj-desc-display-'+id).parentElement.style.display='none';
+  document.getElementById('proj-desc-edit-'+id).style.display='block';
+  const inp=document.getElementById('proj-desc-inp-'+id);
+  if(inp){inp.focus();}
+}
+function cancelEditProjDesc(id){renderMain();}
+function saveEditProjDesc(id){
+  const inp=document.getElementById('proj-desc-inp-'+id);
+  const val=inp?inp.value.trim():'';
+  const pr=DB.projects.find(p=>p.id===id);
+  if(!pr)return;
+  pr.desc=val;
+  renderMain();
+  syncStart();
+  fdb.collection('projects').doc(id).update({desc:val}).then(syncDone).catch(e=>syncFail('Update failed: '+e.message));
+}
+
+// ── COLLECTION RENAME ──
+function startEditColl(projId,collId){
+  document.getElementById('coll-title-display-'+collId).parentElement.style.display='none';
+  document.getElementById('coll-title-edit-'+collId).style.display='block';
+  const inp=document.getElementById('coll-title-inp-'+collId);
+  if(inp){inp.focus();inp.select();}
+}
+function cancelEditColl(collId){renderMain();}
+function saveEditColl(projId,collId){
+  const inp=document.getElementById('coll-title-inp-'+collId);
+  const val=inp?inp.value.trim():'';
+  if(!val)return;
+  const pr=DB.projects.find(p=>p.id===projId);
+  const co=pr?(pr.collections||[]).find(c=>c.id===collId):null;
+  if(!co)return;
+  co.title=val;
+  renderAll();
+  syncStart();
+  fdb.collection('collections').doc(collId).update({title:val}).then(syncDone).catch(e=>syncFail('Rename failed: '+e.message));
+}
+
+// ── COLLECTION DESC ──
+function startEditCollDesc(projId,collId){
+  document.getElementById('coll-desc-display-'+collId).parentElement.style.display='none';
+  document.getElementById('coll-desc-edit-'+collId).style.display='block';
+  const inp=document.getElementById('coll-desc-inp-'+collId);
+  if(inp){inp.focus();}
+}
+function cancelEditCollDesc(collId){renderMain();}
+function saveEditCollDesc(projId,collId){
+  const inp=document.getElementById('coll-desc-inp-'+collId);
+  const val=inp?inp.value.trim():'';
+  const pr=DB.projects.find(p=>p.id===projId);
+  const co=pr?(pr.collections||[]).find(c=>c.id===collId):null;
+  if(!co)return;
+  co.desc=val;
+  renderMain();
+  syncStart();
+  fdb.collection('collections').doc(collId).update({desc:val}).then(syncDone).catch(e=>syncFail('Update failed: '+e.message));
+}
+
+// ── ITEM RENAME + EDITION EDIT ──
+function startEditItem(itemId){
+  document.getElementById('item-title-display-'+itemId).parentElement.style.display='none';
+  document.getElementById('item-title-edit-'+itemId).style.display='block';
+  const inp=document.getElementById('item-title-inp-'+itemId);
+  if(inp){inp.focus();inp.select();}
+}
+function cancelEditItem(itemId){renderMain();}
+function toggleItemEdCustom(itemId){
+  const sel=document.getElementById('item-ed-inp-'+itemId);
+  const cust=document.getElementById('item-ed-custom-'+itemId);
+  if(cust)cust.style.display=sel&&sel.value==='custom'?'block':'none';
+}
+function saveEditItem(itemId){
+  const titleInp=document.getElementById('item-title-inp-'+itemId);
+  const edSel=document.getElementById('item-ed-inp-'+itemId);
+  const edCust=document.getElementById('item-ed-custom-'+itemId);
+  const newTitle=titleInp?titleInp.value.trim():'';
+  if(!newTitle)return;
+  const edVal=edSel?edSel.value:'';
+  const newEdition=edVal==='custom'?(edCust?edCust.value.trim():''):edVal;
+  const item=findItem();
+  if(!item||item.id!==itemId)return;
+  item.title=newTitle;
+  item.edition=newEdition;
+  renderAll();
+  if(item.id){
+    syncStart();
+    fdb.collection('items').doc(item.id).update({title:newTitle,edition:newEdition}).then(syncDone).catch(e=>syncFail('Rename failed: '+e.message));
+  }
+}
+
 function renderAll(){renderTree();renderMain();}
 
+
+
+// ── INLINE EDITING ──
+
+// Helper to show/hide edit form
+function _showEdit(displayId, editId, inpId) {
+  document.getElementById(displayId).closest('div').style.display='none';
+  const editEl = document.getElementById(editId);
+  editEl.style.display='block';
+  const inp = document.getElementById(inpId);
+  if(inp){inp.focus();inp.select();}
+}
+function _hideEdit(displayParentId, editId) {
+  const editEl = document.getElementById(editId);
+  if(editEl) editEl.style.display='none';
+  // Re-render to restore display state cleanly
+  renderMain();
+}
+
+// ── PROJECT RENAME ──
+function startEditProj(id){
+  document.getElementById('proj-title-display-'+id).parentElement.style.display='none';
+  document.getElementById('proj-title-edit-'+id).style.display='block';
+  const inp=document.getElementById('proj-title-inp-'+id);
+  if(inp){inp.focus();inp.select();}
+}
+function cancelEditProj(id){renderMain();}
+function saveEditProj(id){
+  const inp=document.getElementById('proj-title-inp-'+id);
+  const val=inp?inp.value.trim():'';
+  if(!val)return;
+  const pr=DB.projects.find(p=>p.id===id);
+  if(!pr)return;
+  pr.title=val;
+  renderAll();
+  syncStart();
+  fdb.collection('projects').doc(id).update({title:val}).then(syncDone).catch(e=>syncFail('Rename failed: '+e.message));
+}
+
+// ── PROJECT DESC ──
+function startEditProjDesc(id){
+  document.getElementById('proj-desc-display-'+id).parentElement.style.display='none';
+  document.getElementById('proj-desc-edit-'+id).style.display='block';
+  const inp=document.getElementById('proj-desc-inp-'+id);
+  if(inp){inp.focus();}
+}
+function cancelEditProjDesc(id){renderMain();}
+function saveEditProjDesc(id){
+  const inp=document.getElementById('proj-desc-inp-'+id);
+  const val=inp?inp.value.trim():'';
+  const pr=DB.projects.find(p=>p.id===id);
+  if(!pr)return;
+  pr.desc=val;
+  renderMain();
+  syncStart();
+  fdb.collection('projects').doc(id).update({desc:val}).then(syncDone).catch(e=>syncFail('Update failed: '+e.message));
+}
+
+// ── COLLECTION RENAME ──
+function startEditColl(projId,collId){
+  document.getElementById('coll-title-display-'+collId).parentElement.style.display='none';
+  document.getElementById('coll-title-edit-'+collId).style.display='block';
+  const inp=document.getElementById('coll-title-inp-'+collId);
+  if(inp){inp.focus();inp.select();}
+}
+function cancelEditColl(collId){renderMain();}
+function saveEditColl(projId,collId){
+  const inp=document.getElementById('coll-title-inp-'+collId);
+  const val=inp?inp.value.trim():'';
+  if(!val)return;
+  const pr=DB.projects.find(p=>p.id===projId);
+  const co=pr?(pr.collections||[]).find(c=>c.id===collId):null;
+  if(!co)return;
+  co.title=val;
+  renderAll();
+  syncStart();
+  fdb.collection('collections').doc(collId).update({title:val}).then(syncDone).catch(e=>syncFail('Rename failed: '+e.message));
+}
+
+// ── COLLECTION DESC ──
+function startEditCollDesc(projId,collId){
+  document.getElementById('coll-desc-display-'+collId).parentElement.style.display='none';
+  document.getElementById('coll-desc-edit-'+collId).style.display='block';
+  const inp=document.getElementById('coll-desc-inp-'+collId);
+  if(inp){inp.focus();}
+}
+function cancelEditCollDesc(collId){renderMain();}
+function saveEditCollDesc(projId,collId){
+  const inp=document.getElementById('coll-desc-inp-'+collId);
+  const val=inp?inp.value.trim():'';
+  const pr=DB.projects.find(p=>p.id===projId);
+  const co=pr?(pr.collections||[]).find(c=>c.id===collId):null;
+  if(!co)return;
+  co.desc=val;
+  renderMain();
+  syncStart();
+  fdb.collection('collections').doc(collId).update({desc:val}).then(syncDone).catch(e=>syncFail('Update failed: '+e.message));
+}
+
+// ── ITEM RENAME + EDITION EDIT ──
+function startEditItem(itemId){
+  document.getElementById('item-title-display-'+itemId).parentElement.style.display='none';
+  document.getElementById('item-title-edit-'+itemId).style.display='block';
+  const inp=document.getElementById('item-title-inp-'+itemId);
+  if(inp){inp.focus();inp.select();}
+}
+function cancelEditItem(itemId){renderMain();}
+function toggleItemEdCustom(itemId){
+  const sel=document.getElementById('item-ed-inp-'+itemId);
+  const cust=document.getElementById('item-ed-custom-'+itemId);
+  if(cust)cust.style.display=sel&&sel.value==='custom'?'block':'none';
+}
+function saveEditItem(itemId){
+  const titleInp=document.getElementById('item-title-inp-'+itemId);
+  const edSel=document.getElementById('item-ed-inp-'+itemId);
+  const edCust=document.getElementById('item-ed-custom-'+itemId);
+  const newTitle=titleInp?titleInp.value.trim():'';
+  if(!newTitle)return;
+  const edVal=edSel?edSel.value:'';
+  const newEdition=edVal==='custom'?(edCust?edCust.value.trim():''):edVal;
+  const item=findItem();
+  if(!item||item.id!==itemId)return;
+  item.title=newTitle;
+  item.edition=newEdition;
+  renderAll();
+  if(item.id){
+    syncStart();
+    fdb.collection('items').doc(item.id).update({title:newTitle,edition:newEdition}).then(syncDone).catch(e=>syncFail('Rename failed: '+e.message));
+  }
+}
 
 function renderAll(){renderTree();renderMain();}
 
