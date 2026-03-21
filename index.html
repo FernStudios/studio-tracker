@@ -995,16 +995,17 @@ async function doCreateProj(){
 
 async function doCreateColl(){
   const t=gv('c-title');if(!t){document.getElementById('c-title').focus();return;}
+  const desc=gv('c-desc');
   const pr=DB.projects.find(p=>p.id===pendingProjId);if(!pr)return;
   if(!pr.collections)pr.collections=[];
   const sortOrder=pr.collections.length+1;
   closeModal('coll');syncStart();
   try{
     const ref=await fdb.collection('collections').add({
-      title:t,projectId:pr.id,sortOrder,collapsed:true,
+      title:t,desc,projectId:pr.id,sortOrder,collapsed:true,
       createdAt:firebase.firestore.FieldValue.serverTimestamp()
     });
-    const c={id:ref.id,title:t,desc:'',collapsed:true,items:[],projectId:pr.id,sortOrder};
+    const c={id:ref.id,title:t,desc,collapsed:true,items:[],projectId:pr.id,sortOrder};
     pr.collections.push(c);
     SEL={type:'coll',projId:pendingProjId,collId:c.id,itemId:null};renderAll();syncDone();
   }catch(err){syncFail('Could not create collection: '+err.message);}
