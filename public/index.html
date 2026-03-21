@@ -651,9 +651,19 @@ async function api(method,fn,body){
   const url='/.netlify/functions/'+fn;
   const opts={method,headers:{'Content-Type':'application/json'}};
   if(body)opts.body=JSON.stringify(body);
-  const res=await fetch(url,opts);
-  if(!res.ok){let msg='HTTP '+res.status;try{const e=await res.json();msg=e.error||msg;}catch(ex){}throw new Error(msg);}
-  return res.json();
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),15000);
+  try{
+    opts.signal=controller.signal;
+    const res=await fetch(url,opts);
+    clearTimeout(timer);
+    if(!res.ok){let msg='HTTP '+res.status;try{const e=await res.json();msg=e.error||msg;}catch(ex){}throw new Error(msg);}
+    return res.json();
+  }catch(e){
+    clearTimeout(timer);
+    if(e.name==='AbortError')throw new Error('Request timed out (15s). Check that Netlify functions are deployed.');
+    throw e;
+  }
 }
 let _syncCount=0,_syncError=false;
 function syncStart(){_syncCount++;_pill();}
@@ -720,17 +730,17 @@ async function initApp(){
     DB={projects:notionData.projects||[],standalone:notionData.standalone||[],
         customTemplates:Object.assign({},migrated(),local.customTemplates||{}),
         _standaloneProjectId:local.standaloneProjectId||null};
-    // Ensure the hidden Standalone Items project exists in Notion
-    await ensureStandaloneProject();
     if(ov)ov.style.display='none';
     renderAll();
+    // Bootstrap standalone project in background (non-blocking)
+    ensureStandaloneProject().catch(e=>console.warn('Standalone project bootstrap failed:',e.message));
   }catch(err){
     if(ov)ov.style.display='none';
-    if(ev)ev.style.display='flex';
+    console.error('[Studio Tracker] Load failed:',err);
+    if(ev){ev.style.display='flex';}
     const em=document.getElementById('errorMsg');
-    if(em)em.textContent=(err.message||'Network error')+'
-
-Check Netlify deploy logs and confirm NOTION_TOKEN is set in environment variables.';
+    const hint='\n\nMost likely causes:\n1. Netlify functions not yet deployed\n2. NOTION_TOKEN not set in Netlify env vars\n3. File opened locally instead of via Netlify URL';
+    if(em)em.textContent=(err.message||'Network error')+hint;
   }
 }
 
