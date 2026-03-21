@@ -1,8 +1,7 @@
 // netlify/functions/create-item.js
 //
 // POST — Create a new item in the Notion Items DB.
-// Tasks are managed in app state only and synced via update-item (status/progress).
-// This keeps creation to a single Notion API call — no timeout risk.
+// Tasks are managed in app state only and synced via create-tasks.
 //
 // Request body:
 // {
@@ -13,7 +12,8 @@
 //   projectNotionId: string,
 //   collectionNotionId: string | null,
 //   monthName?: string,
-//   monthNumber?: number
+//   monthNumber?: number,
+//   coverUrl?: string | null   // ← NEW: Cloudinary URL
 // }
 //
 // Response: { notionId: string, title: string }
@@ -42,6 +42,7 @@ exports.handler = async (event) => {
     collectionNotionId,
     monthName = "",
     monthNumber = null,
+    coverUrl = null,           // ← NEW
   } = body;
 
   if (!title) return jsonResponse(400, { error: "title is required" });
@@ -58,6 +59,7 @@ exports.handler = async (event) => {
       progressPct:  0,
       ...(monthName              && { monthName }),
       ...(monthNumber !== null   && { monthNumber }),
+      ...(coverUrl               && { coverUrl }),  // ← NEW
     });
 
     itemProps.Project = { relation: [{ id: projectNotionId }] };
