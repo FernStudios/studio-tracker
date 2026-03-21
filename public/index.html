@@ -652,7 +652,7 @@ async function api(method,fn,body){
   const opts={method,headers:{'Content-Type':'application/json'}};
   if(body)opts.body=JSON.stringify(body);
   const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),15000);
+  const timer=setTimeout(()=>controller.abort(),30000);
   try{
     opts.signal=controller.signal;
     const res=await fetch(url,opts);
@@ -661,7 +661,7 @@ async function api(method,fn,body){
     return res.json();
   }catch(e){
     clearTimeout(timer);
-    if(e.name==='AbortError')throw new Error('Request timed out (15s). Check that Netlify functions are deployed.');
+    if(e.name==='AbortError')throw new Error('Request timed out (30s). Check Netlify function logs for details.');
     throw e;
   }
 }
