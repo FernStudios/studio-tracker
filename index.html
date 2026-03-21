@@ -363,13 +363,18 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--txt);displ
   </select>
   <input class="minp" id="st-ed-c" placeholder="Custom edition name…" style="display:none;margin-top:6px">
   <label class="mlbl">Platform</label>
-  <div class="plat-grid" style="grid-template-columns:1fr 1fr 1fr">
+  <div class="plat-grid" style="grid-template-columns:1fr 1fr 1fr 1fr">
     <div class="ptbtn selk" id="spt-kdp" onclick="selPlat('st','kdp')"><div class="ptbtn-ico">📚</div><div class="ptbtn-lbl">KDP Book</div><div class="ptbtn-sub">Amazon</div></div>
     <div class="ptbtn" id="spt-etsy" onclick="selPlat('st','etsy')"><div class="ptbtn-ico">🛍</div><div class="ptbtn-lbl">Etsy Digital</div><div class="ptbtn-sub">Fern Studios</div></div>
     <div class="ptbtn" id="stpt-app" onclick="selPlat('st','app')"><div class="ptbtn-ico">📱</div><div class="ptbtn-lbl">App</div><div class="ptbtn-sub">iOS / Android</div></div>
+    <div class="ptbtn" id="spt-custom" onclick="selPlat('st','custom')"><div class="ptbtn-ico">⚙</div><div class="ptbtn-lbl">Custom</div><div class="ptbtn-sub">Your template</div></div>
   </div>
   <div id="st-etype-wrap" style="display:none"><label class="mlbl">Etsy Product Type</label>
     <select class="msel" id="st-etype"><option value="printable">Printables / PDFs</option><option value="app">App (iOS / Android)</option><option value="planner">Planners &amp; Journals</option><option value="notion">Notion Templates</option><option value="canva">Canva Templates</option><option value="pattern">Digital Papers / Patterns</option><option value="svg">SVG / Cut Files</option><option value="excel">Excel Workbooks</option></select>
+  </div>
+  <div id="st-custom-wrap" style="display:none"><label class="mlbl">Custom Template</label>
+    <select class="msel" id="st-custom-tmpl"></select>
+    <div id="st-custom-none" style="display:none;font-size:.72rem;color:var(--txtmu);margin-top:6px">No custom templates yet. <span style="color:var(--lav);cursor:pointer;text-decoration:underline" onclick="closeModal('standalone');openTemplateManager()">Create one →</span></div>
   </div>
   <div class="mactions"><button class="btn-cancel" onclick="closeModal('standalone')">Cancel</button><button class="btn-create" onclick="doCreateStandalone()">Create</button></div>
 </div></div>
@@ -389,13 +394,18 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--txt);displ
   </select>
   <input class="minp" id="di-ed-c" placeholder="Custom edition name…" style="display:none;margin-top:6px">
   <label class="mlbl">Platform</label>
-  <div class="plat-grid" style="grid-template-columns:1fr 1fr 1fr">
+  <div class="plat-grid" style="grid-template-columns:1fr 1fr 1fr 1fr">
     <div class="ptbtn selk" id="dipt-kdp" onclick="selPlat('di','kdp')"><div class="ptbtn-ico">📚</div><div class="ptbtn-lbl">KDP Book</div><div class="ptbtn-sub">Amazon</div></div>
     <div class="ptbtn" id="dipt-etsy" onclick="selPlat('di','etsy')"><div class="ptbtn-ico">🛍</div><div class="ptbtn-lbl">Etsy Digital</div><div class="ptbtn-sub">Fern Studios</div></div>
     <div class="ptbtn" id="dipt-app" onclick="selPlat('di','app')"><div class="ptbtn-ico">📱</div><div class="ptbtn-lbl">App</div><div class="ptbtn-sub">iOS / Android</div></div>
+    <div class="ptbtn" id="dipt-custom" onclick="selPlat('di','custom')"><div class="ptbtn-ico">⚙</div><div class="ptbtn-lbl">Custom</div><div class="ptbtn-sub">Your template</div></div>
   </div>
   <div id="di-etype-wrap" style="display:none"><label class="mlbl">Etsy Product Type</label>
     <select class="msel" id="di-etype"><option value="printable">Printables / PDFs</option><option value="app">App (iOS / Android)</option><option value="planner">Planners &amp; Journals</option><option value="notion">Notion Templates</option><option value="canva">Canva Templates</option><option value="pattern">Digital Papers / Patterns</option><option value="svg">SVG / Cut Files</option><option value="excel">Excel Workbooks</option></select>
+  </div>
+  <div id="di-custom-wrap" style="display:none"><label class="mlbl">Custom Template</label>
+    <select class="msel" id="di-custom-tmpl"></select>
+    <div id="di-custom-none" style="display:none;font-size:.72rem;color:var(--txtmu);margin-top:6px">No custom templates yet. <span style="color:var(--lav);cursor:pointer;text-decoration:underline" onclick="closeModal('directitem');openTemplateManager()">Create one →</span></div>
   </div>
   <div class="mactions"><button class="btn-cancel" onclick="closeModal('directitem')">Cancel</button><button class="btn-create" onclick="doCreateDirectItem()">Create Item</button></div>
 </div></div>
@@ -881,11 +891,25 @@ function selPlat(prefix,plat){
   const eEl=document.getElementById(etId);if(eEl)eEl.className='ptbtn'+(plat==='etsy'?' sele':'');
   const appEl=document.getElementById(appId);if(appEl)appEl.className='ptbtn'+(plat==='app'?' selk':'');
   const ew=document.getElementById(etWrap);if(ew)ew.style.display=plat==='etsy'?'block':'none';
-  if(prefix==='item'){
-    const custBtn=document.getElementById('ipt-custom');
-    if(custBtn)custBtn.className='ptbtn'+(plat==='custom'?' selk':'');
-    const custWrap=document.getElementById('it-custom-wrap');
-    if(custWrap){custWrap.style.display=plat==='custom'?'block':'none';if(plat==='custom')refreshCustomTmplSelect();}
+  // Custom tile & wrap for all prefixes
+  const custBtnId=prefix==='item'?'ipt-custom':prefix==='di'?'dipt-custom':'spt-custom';
+  const custWrapId=prefix==='item'?'it-custom-wrap':prefix==='di'?'di-custom-wrap':'st-custom-wrap';
+  const custTmplId=prefix==='item'?'it-custom-tmpl':prefix==='di'?'di-custom-tmpl':'st-custom-tmpl';
+  const custNoneId=prefix==='item'?'it-custom-none':prefix==='di'?'di-custom-none':'st-custom-none';
+  const custBtn=document.getElementById(custBtnId);
+  if(custBtn)custBtn.className='ptbtn'+(plat==='custom'?' selk':'');
+  const custWrap=document.getElementById(custWrapId);
+  if(custWrap){
+    custWrap.style.display=plat==='custom'?'block':'none';
+    if(plat==='custom'){
+      const sel=document.getElementById(custTmplId);
+      const none=document.getElementById(custNoneId);
+      if(sel&&none){
+        const keys=Object.keys(DB.customTemplates||{}).filter(k=>!k.startsWith('builtin_'));
+        if(!keys.length){sel.style.display='none';none.style.display='block';}
+        else{none.style.display='none';sel.style.display='block';sel.innerHTML=keys.map(k=>`<option value="${k}">${esc(DB.customTemplates[k].name)}</option>`).join('');}
+      }
+    }
   }
 }
 function calcRoas(){
@@ -1018,7 +1042,7 @@ async function doCreateStandalone(){
   const t=gv('st-title');if(!t){document.getElementById('st-title').focus();return;}
   const edSel=document.getElementById('st-ed').value;
   const edition=edSel==='custom'?gv('st-ed-c'):edSel;
-  const etype=document.getElementById('st-etype').value;
+  const etype=modalStPlat==='custom'?document.getElementById('st-custom-tmpl').value:document.getElementById('st-etype').value;
   const stages=buildStages(modalStPlat,etype);
   closeModal('standalone');
   const projNid=DB._standaloneProjectId;
@@ -1127,7 +1151,7 @@ async function doCreateDirectItem(){
   const collId=document.getElementById('di-coll').value;
   const edSel2=document.getElementById('di-ed').value;
   const edition2=edSel2==='custom'?gv('di-ed-c'):edSel2;
-  const etype2=document.getElementById('di-etype').value;
+  const etype2=modalDiPlat==='custom'?document.getElementById('di-custom-tmpl').value:document.getElementById('di-etype').value;
   const pr=DB.projects.find(p=>p.id===projId);if(!pr)return;
   const stages2=buildStages(modalDiPlat,etype2);
   closeModal('directitem');syncStart();
