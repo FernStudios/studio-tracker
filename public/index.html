@@ -645,6 +645,38 @@ function ring(pct,size,stroke,color,track){
 }
 
 // ── PERSISTENCE ──
+// Background task sync: called after item creation to push task rows to Notion.
+// Runs in chunks of 10 so no single call exceeds Notion rate limits or timeouts.
+// Fire-and-forget from the caller's perspective -- item is already rendered.
+async function syncTasksToNotion(item){
+  if(!item.notionId)return;
+  const flat=[];
+  (item.stages||[]).forEach((s,si)=>{
+    (s.tasks||[]).forEach((t,ti)=>{
+      flat.push({text:t.text,stageName:s.name,stageOrder:si,taskOrder:ti,_task:t});
+    });
+  });
+  if(!flat.length)return;
+  const CHUNK=10;
+  for(let i=0;i<flat.length;i+=CHUNK){
+    const batch=flat.slice(i,i+CHUNK);
+    try{
+      const r=await api('POST','create-tasks',{
+        itemNotionId:item.notionId,
+        tasks:batch.map(b=>({text:b.text,stageName:b.stageName,stageOrder:b.stageOrder,taskOrder:b.taskOrder}))
+      });
+      // Store notionId on each task so update-task works later
+      (r.tasks||[]).forEach(rt=>{
+        const entry=flat.find(f=>f.stageOrder===rt.stageOrder&&f.taskOrder===rt.taskOrder);
+        if(entry){entry._task.notionId=rt.notionId;entry._task.id=rt.notionId;}
+      });
+    }catch(e){
+      console.warn('[syncTasksToNotion] chunk failed:',e.message);
+      // Non-fatal: item still exists in Notion, tasks can be re-synced
+    }
+  }
+}
+
 // API helpers
 const LOCAL_STORE='fern-studio-tracker-local';
 async function api(method,fn,body){
@@ -928,17 +960,13 @@ async function doCreateItem(){
     const r=await api('POST','create-item',{
       title:t,type:modalItemPlat,etype,edition:edition||'',
       projectNotionId:pr.notionId||pr.id,
-      collectionNotionId:co.notionId||co.id,
-      stages:stages.map(s=>({name:s.name,tasks:s.tasks.map(tk=>({text:tk.text}))}))
+      collectionNotionId:co.notionId||co.id
     });
     const item={id:r.notionId,notionId:r.notionId,title:t,edition:edition||'',type:modalItemPlat,etype,activeStage:0,stages,perf:{logs:[]}};
-    (r.tasks||[]).forEach(rt=>{
-      const s=item.stages[rt.stageIndex];
-      if(s&&s.tasks[rt.taskIndex]){s.tasks[rt.taskIndex].notionId=rt.notionId;s.tasks[rt.taskIndex].id=rt.notionId;}
-    });
     co.items.push(item);
     SEL={type:'item',projId:pendingProjId,collId:pendingCollId,itemId:item.id};
     activeStageIdx=0;activeTab='pipeline';renderAll();syncDone();
+    syncTasksToNotion(item).catch(e=>console.warn('Task sync failed:',e.message));
   }catch(err){syncFail('Could not create item: '+err.message);}
 }
 async function doCreateStandalone(){
@@ -962,19 +990,15 @@ async function doCreateStandalone(){
   try{
     const r=await api('POST','create-item',{
       title:t,type:modalStPlat,etype:modalStPlat==='etsy'?etype:'',edition:edition||'',
-      projectNotionId:projNid,collectionNotionId:null,
-      stages:stages.map(s=>({name:s.name,tasks:s.tasks.map(tk=>({text:tk.text}))}))
+      projectNotionId:projNid,collectionNotionId:null
     });
     const item={id:r.notionId,notionId:r.notionId,title:t,sub:gv('st-sub'),edition:edition||'',
       type:modalStPlat,etype:modalStPlat==='etsy'?etype:'',activeStage:0,stages,perf:{logs:[]}};
-    (r.tasks||[]).forEach(rt=>{
-      const s=item.stages[rt.stageIndex];
-      if(s&&s.tasks[rt.taskIndex]){s.tasks[rt.taskIndex].notionId=rt.notionId;s.tasks[rt.taskIndex].id=rt.notionId;}
-    });
     if(!DB.standalone)DB.standalone=[];
     DB.standalone.push(item);
     SEL={type:'standalone',projId:null,collId:null,itemId:item.id};activeStageIdx=0;activeTab='pipeline';
     renderAll();syncDone();
+    syncTasksToNotion(item).catch(e=>console.warn('Task sync failed:',e.message));
   }catch(err){syncFail('Could not create standalone item: '+err.message);}
 }
 
@@ -1052,24 +1076,22 @@ async function doCreateDirectItem(){
       const r=await api('POST','create-item',{
         title:t,type:modalDiPlat,etype:etype2,edition:edition2||'',
         projectNotionId:pr.notionId||pr.id,
-        collectionNotionId:co.notionId||co.id,
-        stages:stages2.map(s=>({name:s.name,tasks:s.tasks.map(tk=>({text:tk.text}))}))
+        collectionNotionId:co.notionId||co.id
       });
       const item2={id:r.notionId,notionId:r.notionId,title:t,edition:edition2||'',type:modalDiPlat,etype:etype2,activeStage:0,stages:stages2,perf:{logs:[]}};
-      (r.tasks||[]).forEach(rt=>{const s=item2.stages[rt.stageIndex];if(s&&s.tasks[rt.taskIndex]){s.tasks[rt.taskIndex].notionId=rt.notionId;s.tasks[rt.taskIndex].id=rt.notionId;}});
       if(!co.items)co.items=[];co.items.push(item2);
       SEL={type:'item',projId,collId,itemId:item2.id};
+      syncTasksToNotion(item2).catch(e=>console.warn('Task sync failed:',e.message));
     } else {
       const r=await api('POST','create-item',{
         title:t,type:modalDiPlat,etype:etype2,edition:edition2||'',
         projectNotionId:pr.notionId||pr.id,
-        collectionNotionId:null,
-        stages:stages2.map(s=>({name:s.name,tasks:s.tasks.map(tk=>({text:tk.text}))}))
+        collectionNotionId:null
       });
       const item2={id:r.notionId,notionId:r.notionId,title:t,edition:edition2||'',type:modalDiPlat,etype:etype2,activeStage:0,stages:stages2,perf:{logs:[]}};
-      (r.tasks||[]).forEach(rt=>{const s=item2.stages[rt.stageIndex];if(s&&s.tasks[rt.taskIndex]){s.tasks[rt.taskIndex].notionId=rt.notionId;s.tasks[rt.taskIndex].id=rt.notionId;}});
       if(!pr.items)pr.items=[];pr.items.push(item2);
       SEL={type:'directitem',projId,collId:null,itemId:item2.id};
+      syncTasksToNotion(item2).catch(e=>console.warn('Task sync failed:',e.message));
     }
     activeStageIdx=0;activeTab='pipeline';renderAll();syncDone();
   }catch(err){syncFail('Could not create item: '+err.message);}
