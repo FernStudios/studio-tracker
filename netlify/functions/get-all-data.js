@@ -1,8 +1,8 @@
 // netlify/functions/get-all-data.js
 //
 // GET — Called once on app load.
-// Queries all 4 databases in parallel, assembles the full nested data tree,
-// and returns it in the format the app expects (matches localStorage DB shape).
+// Queries projects, collections, and items in parallel, then fetches tasks
+// in parallel batches (10 items at a time) to stay well under the 10s limit.
 //
 // Response: { projects: [...], standalone: [...], customTemplates: {} }
 //
@@ -19,8 +19,47 @@ const {
   jsonResponse,
 } = require("./_shared/transformers");
 
-// Status sort order for projects (Active surfaces first)
 const PROJECT_STATUS_ORDER = { Active: 0, "In Progress": 1, "On Hold": 2, Complete: 3, Archived: 4 };
+const EDITION_ORDER = { His: 0, Hers: 1, Ours: 2, None: 3 };
+
+// Fetch all tasks for a single item using a filtered query.
+// Much faster than queryAll(tasks) because it only returns rows for one item.
+async function getTasksForItem(itemNotionId) {
+  const results = [];
+  let cursor = undefined;
+
+  do {
+    const response = await notion.databases.query({
+      database_id: DB.tasks,
+      filter: {
+        property: "Item",
+        relation: { contains: itemNotionId },
+      },
+      page_size: 100,
+      ...(cursor && { start_cursor: cursor }),
+    });
+    results.push(...response.results);
+    cursor = response.has_more ? response.next_cursor : undefined;
+  } while (cursor);
+
+  return results;
+}
+
+// Fetch tasks for multiple items in parallel.
+// Runs in batches of BATCH_SIZE to avoid hammering the Notion API.
+async function getTasksForItems(itemNotionIds, batchSize = 10) {
+  const allTaskPages = [];
+
+  for (let i = 0; i < itemNotionIds.length; i += batchSize) {
+    const batch = itemNotionIds.slice(i, i + batchSize);
+    const batchResults = await Promise.all(batch.map(id => getTasksForItem(id)));
+    for (const pages of batchResults) {
+      allTaskPages.push(...pages);
+    }
+  }
+
+  return allTaskPages;
+}
 
 exports.handler = async (event) => {
   if (event.httpMethod !== "GET") {
@@ -29,36 +68,39 @@ exports.handler = async (event) => {
 
   try {
     // -------------------------------------------------------------------------
-    // 1. Fetch all 4 databases in parallel.
-    //    Tasks are filtered to non-archived only via the Notion filter — avoids
-    //    pulling ghost rows left by incomplete deletes.
+    // 1. Fetch projects, collections, and items in parallel.
+    //    These are small datasets — fast.
     // -------------------------------------------------------------------------
-    const [projectPages, collectionPages, itemPages, taskPages] = await Promise.all([
+    const [projectPages, collectionPages, itemPages] = await Promise.all([
       queryAll(DB.projects),
       queryAll(DB.collections),
       queryAll(DB.items),
-      queryAll(DB.tasks),
     ]);
 
     // -------------------------------------------------------------------------
-    // 2. Transform to app objects, filter archived pages.
-    //    Notion's queryAll can include archived pages if they were archived
-    //    after the query started — guard here just in case.
+    // 2. Transform and filter archived pages.
     // -------------------------------------------------------------------------
     const projects    = projectPages   .filter(p => !p.archived).map(notionPageToProject);
     const collections = collectionPages.filter(p => !p.archived).map(notionPageToCollection);
     const items       = itemPages      .filter(p => !p.archived).map(notionPageToItem);
-    const tasks       = taskPages      .filter(p => !p.archived).map(notionPageToTask);
 
     // -------------------------------------------------------------------------
-    // 3. Build lookup maps for O(1) parent resolution.
+    // 3. Fetch tasks for all items in parallel batches of 10.
+    //    This replaces the single queryAll(DB.tasks) which fetched every row
+    //    sequentially and regularly hit the 30s timeout.
+    // -------------------------------------------------------------------------
+    const itemNotionIds = items.map(i => i.notionId).filter(Boolean);
+    const taskPages = await getTasksForItems(itemNotionIds, 10);
+    const tasks = taskPages.filter(p => !p.archived).map(notionPageToTask);
+
+    // -------------------------------------------------------------------------
+    // 4. Build lookup maps for O(1) parent resolution.
     // -------------------------------------------------------------------------
     const projectMap    = new Map(projects   .map(p => [p.notionId, p]));
     const collectionMap = new Map(collections.map(c => [c.notionId, c]));
 
     // -------------------------------------------------------------------------
-    // 4. Group tasks by item.
-    //    Tasks with no Item relation are orphans — skip them.
+    // 5. Group tasks by item.
     // -------------------------------------------------------------------------
     const tasksByItem = new Map();
     for (const task of tasks) {
@@ -68,24 +110,19 @@ exports.handler = async (event) => {
     }
 
     // -------------------------------------------------------------------------
-    // 5. Attach stages to items and route each item to its parent container.
-    //    Routing order: collection → project.items (no collection) → standalone
+    // 6. Attach stages to items and route each item to its parent container.
     // -------------------------------------------------------------------------
     const standaloneItems = [];
 
     for (const item of items) {
-      // Reconstruct stages from flat task rows
       const itemTasks = tasksByItem.get(item.notionId) ?? [];
       item.stages = reconstructStages(itemTasks);
 
-      // Derive activeStage index from currentStage name (UI default; app may
-      // override from its own localStorage on render).
       if (item.currentStage && item.stages.length > 0) {
         const idx = item.stages.findIndex(s => s.name === item.currentStage);
         item.activeStage = idx >= 0 ? idx : 0;
       }
 
-      // Route to parent
       if (item.collectionNotionId && collectionMap.has(item.collectionNotionId)) {
         collectionMap.get(item.collectionNotionId).items.push(item);
       } else if (item.projectNotionId && projectMap.has(item.projectNotionId)) {
@@ -96,12 +133,8 @@ exports.handler = async (event) => {
     }
 
     // -------------------------------------------------------------------------
-    // 6. Sort items within collections.
-    //    KDP items: sort by monthNumber ASC, then edition order (His/Hers/Ours).
-    //    Everything else: title ASC.
+    // 7. Sort items within collections.
     // -------------------------------------------------------------------------
-    const EDITION_ORDER = { His: 0, Hers: 1, Ours: 2, None: 3 };
-
     for (const collection of collections) {
       collection.items.sort((a, b) => {
         if (a.monthNumber !== null && b.monthNumber !== null) {
@@ -115,14 +148,12 @@ exports.handler = async (event) => {
     }
 
     // -------------------------------------------------------------------------
-    // 7. Attach collections to projects, sort by sortOrder.
+    // 8. Attach collections to projects, sort by sortOrder.
     // -------------------------------------------------------------------------
     for (const collection of collections) {
       if (collection.projectNotionId && projectMap.has(collection.projectNotionId)) {
         projectMap.get(collection.projectNotionId).collections.push(collection);
       }
-      // Collections with no matching project are silently dropped —
-      // they reference an archived or missing project page.
     }
 
     for (const project of projects) {
@@ -130,7 +161,7 @@ exports.handler = async (event) => {
     }
 
     // -------------------------------------------------------------------------
-    // 8. Sort projects: Active first, then by title.
+    // 9. Sort projects: Active first, then by title.
     // -------------------------------------------------------------------------
     projects.sort((a, b) => {
       const sa = PROJECT_STATUS_ORDER[a.status] ?? 99;
@@ -140,9 +171,7 @@ exports.handler = async (event) => {
     });
 
     // -------------------------------------------------------------------------
-    // 9. Return the assembled tree.
-    //    customTemplates is always {} — stored in localStorage only.
-    //    standalone catches items not attached to any project.
+    // 10. Return the assembled tree.
     // -------------------------------------------------------------------------
     return jsonResponse(200, {
       projects,
