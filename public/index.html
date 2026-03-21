@@ -446,6 +446,24 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--txt);displ
   <span>📱 <strong>To use on iPad:</strong> Download this file → open in Safari → tap <strong>Share ↑</strong> → <strong>Add to Home Screen</strong> for the full app experience.</span>
   <button class="safari-banner-close" onclick="document.getElementById('safariBanner').style.display='none'">✕</button>
 </div>
+<!-- LOADING OVERLAY -->
+<div id="loadingOverlay" style="position:fixed;inset:0;background:rgba(14,10,4,.93);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:600">
+  <div style="font-family:'Playfair Display',serif;font-size:1.4rem;color:#d4b87a;letter-spacing:.08em">Studio Tracker</div>
+  <div id="loadMsg" style="font-family:'Nunito',sans-serif;font-size:.78rem;color:#7a6840;letter-spacing:.06em;animation:ldpulse 1.6s ease-in-out infinite">Loading from Notion...</div>
+</div>
+<!-- ERROR OVERLAY -->
+<div id="errorOverlay" style="display:none;position:fixed;inset:0;background:rgba(14,10,4,.93);flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:600">
+  <div style="font-family:'Playfair Display',serif;font-size:1.1rem;color:#d4b87a">Could not load data</div>
+  <div id="errorMsg" style="font-family:'Nunito',sans-serif;font-size:.74rem;color:#a88040;text-align:center;max-width:340px;line-height:1.7;white-space:pre-line"></div>
+  <button onclick="initApp()" style="padding:10px 24px;border-radius:var(--rs);border:none;background:#b8955a;color:#fff;font-family:'Nunito',sans-serif;font-size:.82rem;font-weight:700;cursor:pointer;margin-top:4px">Retry</button>
+</div>
+<!-- OFFLINE BANNER -->
+<div id="offlineBanner" style="display:none;background:#3a1a0a;color:#f4b860;font-family:'Nunito',sans-serif;font-size:.72rem;padding:6px 18px;text-align:center;border-bottom:1px solid #5a2c12;flex-shrink:0">
+  Offline - saves paused until connection returns
+</div>
+<!-- TOAST -->
+<div id="toastEl" style="display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1c1208;color:#f4b860;border:1px solid #4a3218;font-family:'Nunito',sans-serif;font-size:.75rem;padding:10px 18px;border-radius:20px;z-index:700;box-shadow:0 4px 20px rgba(0,0,0,.4);max-width:360px;text-align:center;transition:opacity .3s"></div>
+<style>@keyframes ldpulse{0%,100%{opacity:.4}50%{opacity:1}}</style>
 <script>
 // ── CUSTOM CONFIRM ──
 let _confirmResolve=null;
@@ -627,16 +645,64 @@ function ring(pct,size,stroke,color,track){
 }
 
 // ── PERSISTENCE ──
-function load(){try{const r=localStorage.getItem(STORE);if(r)DB=JSON.parse(r);if(!DB.customTemplates)DB.customTemplates={};}catch(e){}}
-function save(){
-  clearTimeout(saveTimer);
-  saveTimer=setTimeout(()=>{
-    try{
-      localStorage.setItem(STORE,JSON.stringify(DB));
-      const p=document.getElementById('savePill');p.classList.add('ok');
-      setTimeout(()=>p.classList.remove('ok'),1600);
-    }catch(e){}
-  },400);
+// API helpers
+const LOCAL_STORE='fern-studio-tracker-local';
+async function api(method,fn,body){
+  const url='/.netlify/functions/'+fn;
+  const opts={method,headers:{'Content-Type':'application/json'}};
+  if(body)opts.body=JSON.stringify(body);
+  const res=await fetch(url,opts);
+  if(!res.ok){let msg='HTTP '+res.status;try{const e=await res.json();msg=e.error||msg;}catch(ex){}throw new Error(msg);}
+  return res.json();
+}
+let _syncCount=0,_syncError=false;
+function syncStart(){_syncCount++;_pill();}
+function syncDone(){_syncCount=Math.max(0,_syncCount-1);_syncError=false;_pill();}
+function syncFail(msg){_syncCount=Math.max(0,_syncCount-1);_syncError=true;_pill();if(msg)showToast(msg);}
+function _pill(){
+  const p=document.getElementById('savePill');if(!p)return;
+  if(_syncCount>0){p.textContent='Syncing...';p.classList.remove('ok');p.style.color='';p.style.cursor='default';p.onclick=null;}
+  else if(_syncError){p.textContent='Sync error - click to reload';p.classList.remove('ok');p.style.color='#c8604a';p.style.cursor='pointer';p.onclick=()=>location.reload();}
+  else{p.textContent='saved';p.style.color='';p.style.cursor='default';p.onclick=null;p.classList.add('ok');setTimeout(()=>p.classList.remove('ok'),1600);}
+}
+let _toastTimer=null;
+function showToast(msg){
+  const el=document.getElementById('toastEl');if(!el)return;
+  el.textContent=msg;el.style.display='block';el.style.opacity='1';
+  clearTimeout(_toastTimer);
+  _toastTimer=setTimeout(()=>{el.style.opacity='0';setTimeout(()=>{el.style.display='none';el.style.opacity='1';},300);},4500);
+}
+let _online=navigator.onLine;
+window.addEventListener('offline',()=>{_online=false;const b=document.getElementById('offlineBanner');if(b)b.style.display='block';});
+window.addEventListener('online',()=>{_online=true;const b=document.getElementById('offlineBanner');if(b)b.style.display='none';});
+function taskNid(task){return task.notionId||task.id;}
+function msToISO(ms){return ms?new Date(ms).toISOString().split('T')[0]:null;}
+function allTaskNids(item){const ids=[];(item.stages||[]).forEach(s=>(s.tasks||[]).forEach(t=>{const n=taskNid(t);if(n)ids.push(n);}));return ids;}
+function deriveStatus(item){const p=itemPct(item);if(p===100)return'Complete';if(p===0)return'Not Started';return'In Progress';}
+// Persistence: only customTemplates live in localStorage; everything else is in Notion
+function saveLocalOnly(){try{localStorage.setItem(LOCAL_STORE,JSON.stringify({customTemplates:DB.customTemplates||{}}));}catch(e){}}
+function loadLocalOnly(){try{const r=localStorage.getItem(LOCAL_STORE);return r?JSON.parse(r):{};}catch(e){return{};}}
+function save(){saveLocalOnly();}
+async function initApp(){
+  const ov=document.getElementById('loadingOverlay');
+  const ev=document.getElementById('errorOverlay');
+  if(ov)ov.style.display='flex';if(ev)ev.style.display='none';
+  try{
+    const data=await api('GET','get-all-data');
+    const local=loadLocalOnly();
+    const migrated=()=>{try{const r=localStorage.getItem(STORE);return r?JSON.parse(r).customTemplates||{}:{};}catch(e){return{};}};
+    DB={projects:data.projects||[],standalone:data.standalone||[],
+        customTemplates:Object.assign({},migrated(),local.customTemplates||{})};
+    if(ov)ov.style.display='none';
+    renderAll();
+  }catch(err){
+    if(ov)ov.style.display='none';
+    if(ev)ev.style.display='flex';
+    const em=document.getElementById('errorMsg');
+    if(em)em.textContent=(err.message||'Network error')+'
+
+Check Netlify deploy logs and confirm NOTION_TOKEN is set in environment variables.';
+  }
 }
 
 function setFilter(f){
@@ -784,74 +850,114 @@ function toggleCollCollapse(projId,collId,e){
 }
 
 // ── CREATE ──
-function doCreateProj(){
+async function doCreateProj(){
   const t=gv('p-title');if(!t){document.getElementById('p-title').focus();return;}
-  const p={id:uid(),title:t,desc:gv('p-desc'),collapsed:false,collections:[]};
-  DB.projects.push(p);save();closeModal('proj');SEL={type:'proj',projId:p.id,collId:null,itemId:null};renderAll();
+  const desc=gv('p-desc');
+  closeModal('proj');syncStart();
+  try{
+    const r=await api('POST','create-project',{title:t,desc});
+    const p={id:r.notionId,notionId:r.notionId,title:t,desc,collapsed:false,collections:[],items:[]};
+    DB.projects.push(p);
+    SEL={type:'proj',projId:p.id,collId:null,itemId:null};renderAll();syncDone();
+  }catch(err){syncFail('Could not create project: '+err.message);}
 }
-function doCreateColl(){
+async function doCreateColl(){
   const t=gv('c-title');if(!t){document.getElementById('c-title').focus();return;}
   const pr=DB.projects.find(p=>p.id===pendingProjId);if(!pr)return;
   if(!pr.collections)pr.collections=[];
-  const c={id:uid(),title:t,desc:gv('c-desc'),collapsed:false,items:[]};
-  pr.collections.push(c);save();closeModal('coll');SEL={type:'coll',projId:pendingProjId,collId:c.id,itemId:null};renderAll();
+  const sortOrder=pr.collections.length+1;
+  closeModal('coll');syncStart();
+  try{
+    const r=await api('POST','create-collection',{title:t,projectNotionId:pr.notionId||pr.id,sortOrder});
+    const c={id:r.notionId,notionId:r.notionId,title:t,desc:'',collapsed:false,items:[]};
+    pr.collections.push(c);
+    SEL={type:'coll',projId:pendingProjId,collId:c.id,itemId:null};renderAll();syncDone();
+  }catch(err){syncFail('Could not create collection: '+err.message);}
 }
-function doCreateItem(){
+async function doCreateItem(){
   const t=gv('it-title');if(!t){document.getElementById('it-title').focus();return;}
   const edSel=document.getElementById('it-ed').value;
   const edition=edSel==='custom'?gv('it-ed-c'):edSel;
   const etype=modalItemPlat==='etsy'?document.getElementById('it-etype').value:
                modalItemPlat==='custom'?document.getElementById('it-custom-tmpl').value:'';
-  const item={id:uid(),title:t,edition:edition||'',type:modalItemPlat,etype:etype,activeStage:0,stages:buildStages(modalItemPlat,etype),perf:{logs:[]}};
+  const stages=buildStages(modalItemPlat,etype);
   const pr=DB.projects.find(p=>p.id===pendingProjId);
   const co=pr?(pr.collections||[]).find(c=>c.id===pendingCollId):null;
-  if(co)co.items.push(item);
-  save();closeModal('item');SEL={type:'item',projId:pendingProjId,collId:pendingCollId,itemId:item.id};activeStageIdx=0;activeTab='pipeline';renderAll();
+  if(!co)return;
+  closeModal('item');syncStart();
+  try{
+    const r=await api('POST','create-item',{
+      title:t,type:modalItemPlat,etype,edition:edition||'',
+      projectNotionId:pr.notionId||pr.id,
+      collectionNotionId:co.notionId||co.id,
+      stages:stages.map(s=>({name:s.name,tasks:s.tasks.map(tk=>({text:tk.text}))}))
+    });
+    const item={id:r.notionId,notionId:r.notionId,title:t,edition:edition||'',type:modalItemPlat,etype,activeStage:0,stages,perf:{logs:[]}};
+    (r.tasks||[]).forEach(rt=>{
+      const s=item.stages[rt.stageIndex];
+      if(s&&s.tasks[rt.taskIndex]){s.tasks[rt.taskIndex].notionId=rt.notionId;s.tasks[rt.taskIndex].id=rt.notionId;}
+    });
+    co.items.push(item);
+    SEL={type:'item',projId:pendingProjId,collId:pendingCollId,itemId:item.id};
+    activeStageIdx=0;activeTab='pipeline';renderAll();syncDone();
+  }catch(err){syncFail('Could not create item: '+err.message);}
 }
 function doCreateStandalone(){
+  // Standalones need a project relation in Notion -- store locally only (Phase 2 limitation)
   const t=gv('st-title');if(!t){document.getElementById('st-title').focus();return;}
   const edSel=document.getElementById('st-ed').value;
   const edition=edSel==='custom'?gv('st-ed-c'):edSel;
   const etype=document.getElementById('st-etype').value;
   const item={id:uid(),title:t,sub:gv('st-sub'),edition:edition||'',type:modalStPlat,etype:modalStPlat==='etsy'?etype:'',activeStage:0,stages:buildStages(modalStPlat,etype),perf:{logs:[]}};
   if(!DB.standalone)DB.standalone=[];
-  DB.standalone.push(item);save();closeModal('standalone');SEL={type:'standalone',projId:null,collId:null,itemId:item.id};activeStageIdx=0;activeTab='pipeline';renderAll();
+  DB.standalone.push(item);saveLocalOnly();closeModal('standalone');
+  SEL={type:'standalone',projId:null,collId:null,itemId:item.id};activeStageIdx=0;activeTab='pipeline';renderAll();
 }
 
-// ── DELETE ──
+// DELETE (optimistic: remove locally first, then sync to Notion)
 async function deleteProj(id){
   if(!await showConfirm('Delete this project?','This will permanently remove all collections, items, and performance data inside it.','Delete Project','🗂'))return;
+  const pr=DB.projects.find(p=>p.id===id);
   DB.projects=DB.projects.filter(p=>p.id!==id);
   if(SEL.projId===id)SEL={type:null,projId:null,collId:null,itemId:null};
-  save();renderAll();
+  renderAll();
+  if(pr&&pr.notionId){syncStart();api('DELETE','delete-project',{notionId:pr.notionId}).then(syncDone).catch(e=>syncFail('Delete failed: '+e.message));}
 }
 async function deleteColl(projId,collId){
   if(!await showConfirm('Delete this collection?','All items and performance data inside will be permanently removed.','Delete Collection','📁'))return;
   const pr=DB.projects.find(p=>p.id===projId);
+  const co=pr?(pr.collections||[]).find(c=>c.id===collId):null;
   if(pr)pr.collections=(pr.collections||[]).filter(c=>c.id!==collId);
   if(SEL.collId===collId)SEL={type:'proj',projId,collId:null,itemId:null};
-  save();renderAll();
+  renderAll();
+  if(co&&co.notionId){syncStart();api('DELETE','delete-collection',{notionId:co.notionId}).then(syncDone).catch(e=>syncFail('Delete failed: '+e.message));}
 }
 async function deleteItem(projId,collId,itemId){
   if(!await showConfirm('Delete this item?','All pipeline progress and performance data will be permanently removed.','Delete Item','📋'))return;
   const pr=DB.projects.find(p=>p.id===projId);
   const co=pr?(pr.collections||[]).find(c=>c.id===collId):null;
+  const item=co?(co.items||[]).find(i=>i.id===itemId):null;
   if(co)co.items=(co.items||[]).filter(i=>i.id!==itemId);
   if(SEL.itemId===itemId)SEL={type:'coll',projId,collId,itemId:null};
-  save();renderAll();
+  renderAll();
+  if(item&&item.notionId){const tids=allTaskNids(item);syncStart();api('DELETE','delete-item',{notionId:item.notionId,taskNotionIds:tids}).then(syncDone).catch(e=>syncFail('Delete failed: '+e.message));}
 }
 async function deleteDirectItem(projId,itemId){
   if(!await showConfirm('Delete this item?','All pipeline progress and performance data will be permanently removed.','Delete Item','📋'))return;
   const pr=DB.projects.find(p=>p.id===projId);
+  const item=pr?(pr.items||[]).find(i=>i.id===itemId):null;
   if(pr)pr.items=(pr.items||[]).filter(i=>i.id!==itemId);
   if(SEL.itemId===itemId)SEL={type:'proj',projId,collId:null,itemId:null};
-  save();renderAll();
+  renderAll();
+  if(item&&item.notionId){const tids=allTaskNids(item);syncStart();api('DELETE','delete-item',{notionId:item.notionId,taskNotionIds:tids}).then(syncDone).catch(e=>syncFail('Delete failed: '+e.message));}
 }
 async function deleteStandalone(id){
   if(!await showConfirm('Delete this item?','All pipeline progress and performance data will be permanently removed.','Delete Item','📋'))return;
+  const item=(DB.standalone||[]).find(i=>i.id===id);
   DB.standalone=(DB.standalone||[]).filter(i=>i.id!==id);
   if(SEL.itemId===id)SEL={type:null,projId:null,collId:null,itemId:null};
-  save();renderAll();
+  saveLocalOnly();renderAll();
+  if(item&&item.notionId){const tids=allTaskNids(item);syncStart();api('DELETE','delete-item',{notionId:item.notionId,taskNotionIds:tids}).then(syncDone).catch(e=>syncFail('Delete failed: '+e.message));}
 }
 
 // ── DIRECT ITEM TO PROJECT ──
@@ -864,27 +970,45 @@ function updateDiCollSel(){
     pr.collections.forEach(c=>{csel.innerHTML+=`<option value="${c.id}">${c.title}</option>`;});
   }
 }
-function doCreateDirectItem(){
+async function doCreateDirectItem(){
   const projId=gv('di-proj');
   if(!projId){return;}
   const t=gv('di-title');if(!t){document.getElementById('di-title').focus();return;}
   const collId=document.getElementById('di-coll').value;
-  const edSel=document.getElementById('di-ed').value;
-  const edition=edSel==='custom'?gv('di-ed-c'):edSel;
-  const etype=document.getElementById('di-etype').value;
-  const item={id:uid(),title:t,edition:edition||'',type:modalDiPlat,etype:modalDiPlat==='etsy'?etype:'',activeStage:0,stages:buildStages(modalDiPlat,etype),perf:{logs:[]}};
+  const edSel2=document.getElementById('di-ed').value;
+  const edition2=edSel2==='custom'?gv('di-ed-c'):edSel2;
+  const etype2=document.getElementById('di-etype').value;
   const pr=DB.projects.find(p=>p.id===projId);
   if(!pr)return;
-  if(collId){
-    const co=(pr.collections||[]).find(c=>c.id===collId);
-    if(co){if(!co.items)co.items=[];co.items.push(item);}
-    save();closeModal('directitem');SEL={type:'item',projId,collId,itemId:item.id};
-  } else {
-    if(!pr.items)pr.items=[];
-    pr.items.push(item);
-    save();closeModal('directitem');SEL={type:'directitem',projId,collId:null,itemId:item.id};
-  }
-  activeStageIdx=0;activeTab='pipeline';renderAll();
+  closeModal('directitem');syncStart();
+  const stages2=buildStages(modalDiPlat,etype2);
+  try{
+    if(collId){
+      const co=(pr.collections||[]).find(c=>c.id===collId);if(!co){syncFail('Collection not found');return;}
+      const r=await api('POST','create-item',{
+        title:t,type:modalDiPlat,etype:etype2,edition:edition2||'',
+        projectNotionId:pr.notionId||pr.id,
+        collectionNotionId:co.notionId||co.id,
+        stages:stages2.map(s=>({name:s.name,tasks:s.tasks.map(tk=>({text:tk.text}))}))
+      });
+      const item2={id:r.notionId,notionId:r.notionId,title:t,edition:edition2||'',type:modalDiPlat,etype:etype2,activeStage:0,stages:stages2,perf:{logs:[]}};
+      (r.tasks||[]).forEach(rt=>{const s=item2.stages[rt.stageIndex];if(s&&s.tasks[rt.taskIndex]){s.tasks[rt.taskIndex].notionId=rt.notionId;s.tasks[rt.taskIndex].id=rt.notionId;}});
+      if(!co.items)co.items=[];co.items.push(item2);
+      SEL={type:'item',projId,collId,itemId:item2.id};
+    } else {
+      const r=await api('POST','create-item',{
+        title:t,type:modalDiPlat,etype:etype2,edition:edition2||'',
+        projectNotionId:pr.notionId||pr.id,
+        collectionNotionId:null,
+        stages:stages2.map(s=>({name:s.name,tasks:s.tasks.map(tk=>({text:tk.text}))}))
+      });
+      const item2={id:r.notionId,notionId:r.notionId,title:t,edition:edition2||'',type:modalDiPlat,etype:etype2,activeStage:0,stages:stages2,perf:{logs:[]}};
+      (r.tasks||[]).forEach(rt=>{const s=item2.stages[rt.stageIndex];if(s&&s.tasks[rt.taskIndex]){s.tasks[rt.taskIndex].notionId=rt.notionId;s.tasks[rt.taskIndex].id=rt.notionId;}});
+      if(!pr.items)pr.items=[];pr.items.push(item2);
+      SEL={type:'directitem',projId,collId:null,itemId:item2.id};
+    }
+    activeStageIdx=0;activeTab='pipeline';renderAll();syncDone();
+  }catch(err){syncFail('Could not create item: '+err.message);}
 }
 
 // ── TREE RENDER ──
@@ -1193,46 +1317,74 @@ function renderPerfTab(item,delFn){
 // ── PIPELINE ACTIONS ──
 function setStage(i){
   const item=findItem();if(!item)return;
-  activeStageIdx=i;item.activeStage=i;save();renderMain();
+  activeStageIdx=i;item.activeStage=i;renderMain();
 }
 function setTab(t){activeTab=t;renderMain();}
 function toggleTask(tid){
   const item=findItem();if(!item)return;
-  const task=item.stages[activeStageIdx].tasks.find(t=>t.id===tid);
+  const task=item.stages[activeStageIdx].tasks.find(t=>t.id===tid||t.notionId===tid);
   if(!task)return;
   task.done=!task.done;task.doneAt=task.done?Date.now():null;
-  save();renderMain();
+  renderMain(); // optimistic
+  const nid=taskNid(task);
+  if(nid){
+    syncStart();
+    api('PATCH','update-task',{notionId:nid,done:task.done,completedAt:msToISO(task.doneAt)})
+      .then(()=>{
+        // After task toggle, also push item status/progress update
+        const pct=itemPct(item);
+        const status=deriveStatus(item);
+        const curStage=(item.stages[item.activeStage]||item.stages[0]||{}).name||'';
+        if(item.notionId)api('PATCH','update-item',{notionId:item.notionId,status,progressPct:pct,currentStage:curStage});
+        syncDone();
+      })
+      .catch(e=>{task.done=!task.done;task.doneAt=task.done?Date.now():null;renderMain();syncFail('Task sync failed: '+e.message);});
+  }
 }
 function addTask(){
   const inp=document.getElementById('new-task-inp');
   const txt=inp?inp.value.trim():'';if(!txt)return;
   const item=findItem();if(!item)return;
-  item.stages[activeStageIdx].tasks.push({id:uid(),text:txt,done:false,doneAt:null});
-  save();renderMain();
+  const newTask={id:uid(),text:txt,done:false,doneAt:null};
+  item.stages[activeStageIdx].tasks.push(newTask);
+  renderMain();
   setTimeout(()=>{const el=document.getElementById('new-task-inp');if(el)el.focus();},50);
+  // Note: ad-hoc tasks added to existing items are local only (no corresponding Notion row created)
 }
 function deleteTask(tid){
   const item=findItem();if(!item)return;
-  item.stages[activeStageIdx].tasks=item.stages[activeStageIdx].tasks.filter(t=>t.id!==tid);
-  save();renderMain();
+  item.stages[activeStageIdx].tasks=item.stages[activeStageIdx].tasks.filter(t=>t.id!==tid&&t.notionId!==tid);
+  renderMain();
 }
 function completeStage(){
   const item=findItem();if(!item)return;
-  const s=item.stages[activeStageIdx];s.completed=true;s.completedAt=Date.now();save();renderMain();
+  const s=item.stages[activeStageIdx];s.completed=true;s.completedAt=Date.now();
+  const pct=itemPct(item);const status=deriveStatus(item);
+  const nextIdx=activeStageIdx+1;
+  const nextStageName=item.stages[nextIdx]?item.stages[nextIdx].name:s.name;
+  renderMain();
+  if(item.notionId){syncStart();api('PATCH','update-item',{notionId:item.notionId,status,progressPct:pct,currentStage:nextStageName}).then(syncDone).catch(e=>syncFail('Sync failed: '+e.message));}
 }
 function uncompleteStage(){
   const item=findItem();if(!item)return;
-  const s=item.stages[activeStageIdx];s.completed=false;s.completedAt=null;save();renderMain();
+  const s=item.stages[activeStageIdx];s.completed=false;s.completedAt=null;
+  const pct=itemPct(item);const status=deriveStatus(item);
+  renderMain();
+  if(item.notionId){syncStart();api('PATCH','update-item',{notionId:item.notionId,status,progressPct:pct,currentStage:s.name}).then(syncDone).catch(e=>syncFail('Sync failed: '+e.message));}
 }
 function nextStage(){
   const item=findItem();if(!item)return;
   if(activeStageIdx<item.stages.length-1){
-    activeStageIdx++;item.activeStage=activeStageIdx;save();renderMain();
+    activeStageIdx++;item.activeStage=activeStageIdx;
+    const s=item.stages[activeStageIdx];
+    const pct=itemPct(item);const status=deriveStatus(item);
+    renderMain();
+    if(item.notionId){syncStart();api('PATCH','update-item',{notionId:item.notionId,status,progressPct:pct,currentStage:s.name}).then(syncDone).catch(e=>syncFail('Sync failed: '+e.message));}
   }
 }
 
 // ── PERF LOG ──
-function doSaveLog(){
+async function doSaveLog(){
   const item=findItem();if(!item)return;
   if(!item.perf)item.perf={logs:[]};
   const log={
@@ -1245,12 +1397,28 @@ function doSaveLog(){
     adspend:gv('l-adspend'),adrev:gv('l-adrev'),
     notes:gv('l-notes')
   };
-  item.perf.logs.push(log);save();closeModal('log');renderMain();
+  item.perf.logs.push(log);closeModal('log');renderMain();
+  if(item.notionId){
+    syncStart();
+    api('POST','log-performance',{
+      itemNotionId:item.notionId,itemTitle:item.title,itemType:item.type,
+      logDate:log.date,
+      unitsPeriod:parseFloat(log.units)||0,revenuePeriod:parseFloat(log.rev)||0,
+      cumulativeUnits:parseFloat(log.cunits)||0,cumulativeRevenue:parseFloat(log.crev)||0,
+      views:parseFloat(log.views)||0,orders:parseFloat(log.orders)||0,
+      reviewsCount:parseFloat(log.reviews)||0,avgRating:parseFloat(log.rating)||0,
+      adSpend:parseFloat(log.adspend)||0,adRevenue:parseFloat(log.adrev)||0,
+      bsrOverall:log.bsr?parseFloat(log.bsr):undefined,
+      categoryRank1:log.cat1||undefined,categoryRank2:log.cat2||undefined,
+      importSource:'Manual',notes:log.notes||''
+    }).then(syncDone).catch(e=>syncFail('Log sync failed: '+e.message));
+  }
 }
 async function deleteLog(idx){
   if(!await showConfirm('Delete log entry?','This performance entry will be permanently removed.','Delete Entry','📊'))return;
   const item=findItem();if(!item||!item.perf)return;
-  item.perf.logs.splice(idx,1);save();renderMain();
+  item.perf.logs.splice(idx,1);renderMain();
+  // Perf log rows are not deleted from Notion (append-only by design)
 }
 
 // ── STUCK DETECTION ──
@@ -1641,7 +1809,7 @@ function resetBuiltinTemplate(key){
   ).then(ok=>{
     if(!ok)return;
     if(DB.customTemplates)delete DB.customTemplates[key];
-    save();renderTmplList();
+    saveLocalOnly();renderTmplList();
   });
 }
 
@@ -1713,9 +1881,8 @@ function saveTemplate(){
   const id=editingTmplId||('ct_'+uid());
   if(!DB.customTemplates)DB.customTemplates={};
   DB.customTemplates[id]={name,stages};
-  // Re-enable name field for next use
   nameEl.disabled=false;
-  save();
+  saveLocalOnly();
   renderTmplList();
   document.getElementById('tmpl-editor').style.display='none';
   editingTmplId=null;
@@ -1735,53 +1902,17 @@ function deleteTemplate(id){
   ).then(ok=>{
     if(!ok)return;
     delete DB.customTemplates[id];
-    save();
+    saveLocalOnly();
     renderTmplList();
   });
 }
 
 function renderAll(){renderTree();renderMain();}
 
-// ── INIT ──
-load();
-if(DB.projects===undefined)DB.projects=[];
-if(DB.standalone===undefined)DB.standalone=[];
-DB.projects.forEach(p=>{if(!p.items)p.items=[];});
-
-// Seed ThreeFold Cord if not already present
-try{
-if(!DB.projects.find(p=>p.title==='ThreeFold Cord')){
-  const months=["Hold Fast","Speak Life","Provision","Covered","Lay It Down","Mended","Fully Known","Fruitful","Unashamed","Rooted","Anchored","Sent"];
-  const editions=[
-    {name:'His Edition',ed:'His'},
-    {name:'Hers Edition',ed:'Hers'},
-    {name:'Couples Guide',ed:'Ours'}
-  ];
-  const proj={id:uid(),title:'ThreeFold Cord',desc:'12-Month Couples Bible Study · KDP Series',collapsed:false,items:[],collections:[]};
-  months.forEach((mo,mi)=>{
-    const coll={id:uid(),title:`Month ${mi+1}: ${mo}`,desc:'',collapsed:true,items:[]};
-    editions.forEach(ed=>{
-      const item={
-        id:uid(),
-        title:`${mo} — ${ed.name}`,
-        edition:ed.ed,
-        type:'kdp',etype:'',
-        activeStage:0,
-        stages:buildStages('kdp',''),
-        perf:{logs:[]}
-      };
-      coll.items.push(item);
-    });
-    proj.collections.push(coll);
-  });
-  DB.projects.unshift(proj);
-  save();
-}
-}catch(e){
-  console.error('Init error, resetting DB:', e);
-  DB={projects:[],standalone:[]};
-  localStorage.removeItem(STORE);
-  location.reload();
-}
-renderAll();
+// INIT
+// customTemplates loaded from localStorage; real data loaded from Notion via initApp()
+DB.projects=DB.projects||[];
+DB.standalone=DB.standalone||[];
+DB.customTemplates={};
+initApp();
 </script></body></html>
