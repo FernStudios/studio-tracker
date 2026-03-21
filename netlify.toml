@@ -1,3 +1,20 @@
 [build]
   publish = "public"
   functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+# Raise function timeout to 26 seconds (Netlify Pro max is 26s, free tier is 10s)
+# If you're on a free plan, upgrade or reduce task counts per create-item call
+[functions."create-item"]
+  timeout = 26
+
+[functions."delete-item"]
+  timeout = 26
+
+[functions."import-kdp-csv"]
+  timeout = 26
+
+[functions."sync-etsy"]
+  timeout = 26
