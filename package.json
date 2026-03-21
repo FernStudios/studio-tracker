@@ -1,0 +1,13 @@
+{
+  "name": "studio-tracker",
+  "version": "1.0.0",
+  "description": "Studio Tracker — Fern Studios & KDP",
+  "private": true,
+  "dependencies": {
+    "@notionhq/client": "^2.2.15",
+    "csv-parse": "^5.5.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
