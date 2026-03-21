@@ -1,10 +1,6 @@
 // _shared/transformers.js
 // Bidirectional format converters: Notion page properties ↔ app data objects.
-// Every function that reads from or writes to Notion runs through here.
 
-// ---------------------------------------------------------------------------
-// Safe Notion property accessors
-// ---------------------------------------------------------------------------
 const txt  = (prop) => prop?.rich_text?.[0]?.plain_text ?? "";
 const ttl  = (prop) => prop?.title?.[0]?.plain_text ?? "";
 const sel  = (prop) => prop?.select?.name ?? null;
@@ -14,24 +10,20 @@ const dt   = (prop) => prop?.date?.start ?? null;
 const url  = (prop) => prop?.url ?? null;
 const rel1 = (prop) => prop?.relation?.[0]?.id ?? null;
 
-// ---------------------------------------------------------------------------
-// Notion → App format
-// ---------------------------------------------------------------------------
-
 function notionPageToProject(page) {
   const p = page.properties;
   return {
     notionId:      page.id,
-    id:            page.id,          // app uses id field for its own lookups
+    id:            page.id,
     title:         ttl(p.Title),
     desc:          txt(p.Description),
     status:        sel(p.Status),
     startDate:     dt(p["Start Date"]),
     targetLaunch:  dt(p["Target Launch"]),
     notes:         txt(p.Notes),
-    collapsed:     false,            // UI state — not persisted in Notion
-    collections:   [],               // populated during assembly in get-all-data
-    items:         [],               // populated during assembly
+    collapsed:     false,
+    collections:   [],
+    items:         [],
   };
 }
 
@@ -45,13 +37,12 @@ function notionPageToCollection(page) {
     sortOrder:        num(p["Sort Order"]) ?? 0,
     status:           sel(p.Status),
     notes:            txt(p.Notes),
-    items:            [],            // populated during assembly
+    items:            [],
   };
 }
 
 function notionPageToItem(page) {
   const p = page.properties;
-  // Notion stores type as "KDP"/"Etsy"/"App"; app expects lowercase
   const rawType = sel(p.Type);
   const type = rawType ? rawType.toLowerCase() : "kdp";
 
@@ -75,6 +66,7 @@ function notionPageToItem(page) {
     reviewsCount:        num(p["Reviews Count"]) ?? 0,
     lastUpdated:         dt(p["Last Updated"]),
     notes:               txt(p.Notes),
+    coverUrl:            url(p["Cover URL"]) ?? null,   // ← NEW
     // KDP-specific
     bsrOverall:          num(p["BSR Overall"]),
     categoryRank1:       txt(p["Category Rank 1"]),
@@ -89,10 +81,9 @@ function notionPageToItem(page) {
     platform:            sel(p.Platform),
     appStoreUrl:         url(p["App Store URL"]),
     totalDownloads:      num(p["Total Downloads"]),
-    // These are populated during assembly
     stages:              [],
     perf:                { logs: [] },
-    activeStage:         0,          // derived from currentStage in get-all-data
+    activeStage:         0,
   };
 }
 
@@ -112,12 +103,9 @@ function notionPageToTask(page) {
   };
 }
 
-// Reconstruct the stages array for one item from its flat Notion task rows.
-// Tasks arrive with stageName + stageOrder + taskOrder — group, sort, derive completion.
 function reconstructStages(tasks) {
   if (!tasks || tasks.length === 0) return [];
 
-  // Group by stage name
   const stageMap = new Map();
   for (const task of tasks) {
     const key = task.stageName || "Unnamed Stage";
@@ -127,14 +115,11 @@ function reconstructStages(tasks) {
     stageMap.get(key).tasks.push(task);
   }
 
-  // Sort stages by stageOrder
   const stages = Array.from(stageMap.values())
     .sort((a, b) => a.stageOrder - b.stageOrder);
 
-  // Sort tasks within each stage, derive stage completion
   for (const stage of stages) {
     stage.tasks.sort((a, b) => a.taskOrder - b.taskOrder);
-
     const allDone = stage.tasks.length > 0 && stage.tasks.every(t => t.done);
     let lastDoneAt = null;
     if (allDone) {
@@ -144,20 +129,13 @@ function reconstructStages(tasks) {
         return t.doneAt > max ? t.doneAt : max;
       }, null);
     }
-
-    stage.completed  = allDone;
+    stage.completed   = allDone;
     stage.completedAt = lastDoneAt;
-    delete stage.stageOrder; // internal sort key, not part of app format
+    delete stage.stageOrder;
   }
 
   return stages;
 }
-
-// ---------------------------------------------------------------------------
-// App → Notion property format
-// Used by create-item, update-item, log-performance, etc.
-// Only includes keys that are explicitly provided (undefined = not sent to Notion).
-// ---------------------------------------------------------------------------
 
 function projectToNotionProperties(fields) {
   const props = {};
@@ -172,64 +150,62 @@ function projectToNotionProperties(fields) {
 
 function collectionToNotionProperties(fields) {
   const props = {};
-  if (fields.title     !== undefined) props.Title      = { title:     [{ text: { content: fields.title } }] };
+  if (fields.title     !== undefined) props.Title        = { title:     [{ text: { content: fields.title } }] };
   if (fields.sortOrder !== undefined) props["Sort Order"] = { number: fields.sortOrder };
-  if (fields.status    !== undefined) props.Status     = { select:    { name: fields.status } };
-  if (fields.notes     !== undefined) props.Notes      = { rich_text: [{ text: { content: fields.notes } }] };
+  if (fields.status    !== undefined) props.Status       = { select:    { name: fields.status } };
+  if (fields.notes     !== undefined) props.Notes        = { rich_text: [{ text: { content: fields.notes } }] };
   return props;
 }
 
 function itemToNotionProperties(fields) {
   const props = {};
 
-  // Core
-  if (fields.title        !== undefined) props.Title           = { title:     [{ text: { content: fields.title       } }] };
-  if (fields.type         !== undefined) props.Type            = { select:    { name: capitalize(fields.type)         } };
-  if (fields.etype        !== undefined) props["Product Type"] = { select:    fields.etype ? { name: fields.etype } : null };
-  if (fields.edition      !== undefined) props.Edition         = { select:    fields.edition ? { name: fields.edition } : null };
-  if (fields.status       !== undefined) props.Status          = { select:    { name: fields.status                   } };
-  if (fields.currentStage !== undefined) props["Current Stage"]= { rich_text: [{ text: { content: fields.currentStage } }] };
-  if (fields.progressPct  !== undefined) props["Progress %"]   = { number:    fields.progressPct };
-  if (fields.monthName    !== undefined) props["Month Name"]   = { rich_text: [{ text: { content: fields.monthName   } }] };
-  if (fields.monthNumber  !== undefined) props["Month Number"] = { number:    fields.monthNumber };
-  if (fields.notes        !== undefined) props.Notes           = { rich_text: [{ text: { content: fields.notes       } }] };
+  if (fields.title        !== undefined) props.Title            = { title:     [{ text: { content: fields.title       } }] };
+  if (fields.type         !== undefined) props.Type             = { select:    { name: capitalize(fields.type)         } };
+  if (fields.etype        !== undefined) props["Product Type"]  = { select:    fields.etype ? { name: fields.etype } : null };
+  if (fields.edition      !== undefined) props.Edition          = { select:    fields.edition ? { name: fields.edition } : null };
+  if (fields.status       !== undefined) props.Status           = { select:    { name: fields.status                   } };
+  if (fields.currentStage !== undefined) props["Current Stage"] = { rich_text: [{ text: { content: fields.currentStage } }] };
+  if (fields.progressPct  !== undefined) props["Progress %"]    = { number:    fields.progressPct };
+  if (fields.monthName    !== undefined) props["Month Name"]    = { rich_text: [{ text: { content: fields.monthName   } }] };
+  if (fields.monthNumber  !== undefined) props["Month Number"]  = { number:    fields.monthNumber };
+  if (fields.notes        !== undefined) props.Notes            = { rich_text: [{ text: { content: fields.notes       } }] };
 
-  // Perf totals
+  // ← NEW: cover image URL
+  if (fields.coverUrl     !== undefined) props["Cover URL"]     = { url: fields.coverUrl || null };
+
   if (fields.cumulativeRevenue !== undefined) props["Cumulative Revenue"] = { number: fields.cumulativeRevenue };
   if (fields.cumulativeUnits   !== undefined) props["Cumulative Units"]   = { number: fields.cumulativeUnits   };
   if (fields.avgRating         !== undefined) props["Avg Rating"]         = { number: fields.avgRating         };
   if (fields.reviewsCount      !== undefined) props["Reviews Count"]      = { number: fields.reviewsCount      };
   if (fields.lastUpdated       !== undefined) props["Last Updated"]       = { date:   fields.lastUpdated ? { start: fields.lastUpdated } : null };
 
-  // KDP
-  if (fields.bsrOverall    !== undefined) props["BSR Overall"]    = { number:    fields.bsrOverall };
-  if (fields.categoryRank1 !== undefined) props["Category Rank 1"]= { rich_text: [{ text: { content: fields.categoryRank1 } }] };
-  if (fields.categoryRank2 !== undefined) props["Category Rank 2"]= { rich_text: [{ text: { content: fields.categoryRank2 } }] };
-  if (fields.asin          !== undefined) props.ASIN              = { rich_text: [{ text: { content: fields.asin          } }] };
-  if (fields.kdpUrl        !== undefined) props["KDP URL"]        = { url:       fields.kdpUrl || null };
+  if (fields.bsrOverall    !== undefined) props["BSR Overall"]     = { number:    fields.bsrOverall };
+  if (fields.categoryRank1 !== undefined) props["Category Rank 1"] = { rich_text: [{ text: { content: fields.categoryRank1 } }] };
+  if (fields.categoryRank2 !== undefined) props["Category Rank 2"] = { rich_text: [{ text: { content: fields.categoryRank2 } }] };
+  if (fields.asin          !== undefined) props.ASIN               = { rich_text: [{ text: { content: fields.asin          } }] };
+  if (fields.kdpUrl        !== undefined) props["KDP URL"]         = { url:       fields.kdpUrl || null };
 
-  // Etsy
-  if (fields.etsyUrl       !== undefined) props["Etsy Listing URL"] = { url:    fields.etsyUrl || null };
-  if (fields.favoritesCount!== undefined) props["Favorites Count"]  = { number: fields.favoritesCount };
-  if (fields.price         !== undefined) props.Price               = { number: fields.price };
+  if (fields.etsyUrl        !== undefined) props["Etsy Listing URL"] = { url:    fields.etsyUrl || null };
+  if (fields.favoritesCount !== undefined) props["Favorites Count"]  = { number: fields.favoritesCount };
+  if (fields.price          !== undefined) props.Price               = { number: fields.price };
 
-  // App
-  if (fields.platform      !== undefined) props.Platform        = { select: fields.platform ? { name: fields.platform } : null };
-  if (fields.appStoreUrl   !== undefined) props["App Store URL"]= { url:    fields.appStoreUrl || null };
-  if (fields.totalDownloads!== undefined) props["Total Downloads"] = { number: fields.totalDownloads };
+  if (fields.platform       !== undefined) props.Platform          = { select: fields.platform ? { name: fields.platform } : null };
+  if (fields.appStoreUrl    !== undefined) props["App Store URL"]  = { url:    fields.appStoreUrl || null };
+  if (fields.totalDownloads !== undefined) props["Total Downloads"]= { number: fields.totalDownloads };
 
   return props;
 }
 
 function taskToNotionProperties(fields) {
   const props = {};
-  if (fields.text       !== undefined) props.Title          = { title:    [{ text: { content: fields.text } }] };
-  if (fields.done       !== undefined) props.Done           = { checkbox: fields.done };
-  if (fields.completedAt!== undefined) props["Completed At"]= { date:    fields.completedAt ? { start: fields.completedAt } : null };
-  if (fields.stageName  !== undefined) props["Stage Name"]  = { rich_text:[{ text: { content: fields.stageName  } }] };
-  if (fields.stageOrder !== undefined) props["Stage Order"] = { number:   fields.stageOrder };
-  if (fields.taskOrder  !== undefined) props["Task Order"]  = { number:   fields.taskOrder  };
-  if (fields.notes      !== undefined) props.Notes          = { rich_text:[{ text: { content: fields.notes } }] };
+  if (fields.text        !== undefined) props.Title           = { title:     [{ text: { content: fields.text } }] };
+  if (fields.done        !== undefined) props.Done            = { checkbox:  fields.done };
+  if (fields.completedAt !== undefined) props["Completed At"] = { date:      fields.completedAt ? { start: fields.completedAt } : null };
+  if (fields.stageName   !== undefined) props["Stage Name"]   = { rich_text: [{ text: { content: fields.stageName  } }] };
+  if (fields.stageOrder  !== undefined) props["Stage Order"]  = { number:    fields.stageOrder };
+  if (fields.taskOrder   !== undefined) props["Task Order"]   = { number:    fields.taskOrder  };
+  if (fields.notes       !== undefined) props.Notes           = { rich_text: [{ text: { content: fields.notes } }] };
   return props;
 }
 
@@ -249,23 +225,19 @@ function perfLogToNotionProperties(fields) {
     "Avg Rating":             { number:    fields.avgRating    ?? 0 },
     "Ad Spend":               { number:    fields.adSpend      ?? 0 },
     "Ad Revenue":             { number:    fields.adRevenue     ?? 0 },
-    ...(fields.bsrOverall    ? { "BSR Overall":    { number:    fields.bsrOverall    } } : {}),
-    ...(fields.categoryRank1 ? { "Category Rank 1":{ rich_text: [{ text: { content: fields.categoryRank1 } }] } } : {}),
-    ...(fields.categoryRank2 ? { "Category Rank 2":{ rich_text: [{ text: { content: fields.categoryRank2 } }] } } : {}),
+    ...(fields.bsrOverall    ? { "BSR Overall":     { number:    fields.bsrOverall    } } : {}),
+    ...(fields.categoryRank1 ? { "Category Rank 1": { rich_text: [{ text: { content: fields.categoryRank1 } }] } } : {}),
+    ...(fields.categoryRank2 ? { "Category Rank 2": { rich_text: [{ text: { content: fields.categoryRank2 } }] } } : {}),
     "Import Source":          { select:    { name: fields.importSource || "Manual" } },
     Notes:                    { rich_text: [{ text: { content: fields.notes || "" } }] },
   };
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 function capitalize(str) {
   if (!str) return str;
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 }
 
-// Standard JSON response builder for Netlify functions
 function jsonResponse(statusCode, body) {
   return {
     statusCode,
