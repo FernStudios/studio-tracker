@@ -683,16 +683,45 @@ function deriveStatus(item){const p=itemPct(item);if(p===100)return'Complete';if
 function saveLocalOnly(){try{localStorage.setItem(LOCAL_STORE,JSON.stringify({customTemplates:DB.customTemplates||{}}));}catch(e){}}
 function loadLocalOnly(){try{const r=localStorage.getItem(LOCAL_STORE);return r?JSON.parse(r):{};}catch(e){return{};}}
 function save(){saveLocalOnly();}
+// Ensures a hidden '__Standalone Items__' project exists in Notion.
+// Its notionId is cached in localStorage so we don't hit duplicates on reload.
+async function ensureStandaloneProject(){
+  if(DB._standaloneProjectId){
+    const exists=DB.projects.some(p=>(p.notionId||p.id)===DB._standaloneProjectId);
+    if(exists)return;
+  }
+  const existing=DB.projects.find(p=>p.title==='__Standalone Items__');
+  if(existing){
+    DB._standaloneProjectId=existing.notionId||existing.id;
+    saveLocalOnly();return;
+  }
+  try{
+    const r=await api('POST','create-project',{
+      title:'__Standalone Items__',
+      desc:'Internal backing project for standalone items. Do not delete.'
+    });
+    DB._standaloneProjectId=r.notionId;
+    DB.projects.push({id:r.notionId,notionId:r.notionId,title:'__Standalone Items__',
+      desc:'',collapsed:true,collections:[],items:[],_hidden:true});
+    saveLocalOnly();
+  }catch(e){
+    console.warn('Could not create standalone backing project:',e.message);
+  }
+}
+
 async function initApp(){
   const ov=document.getElementById('loadingOverlay');
   const ev=document.getElementById('errorOverlay');
   if(ov)ov.style.display='flex';if(ev)ev.style.display='none';
   try{
-    const data=await api('GET','get-all-data');
+    const notionData=await api('GET','get-all-data');
     const local=loadLocalOnly();
     const migrated=()=>{try{const r=localStorage.getItem(STORE);return r?JSON.parse(r).customTemplates||{}:{};}catch(e){return{};}};
-    DB={projects:data.projects||[],standalone:data.standalone||[],
-        customTemplates:Object.assign({},migrated(),local.customTemplates||{})};
+    DB={projects:notionData.projects||[],standalone:notionData.standalone||[],
+        customTemplates:Object.assign({},migrated(),local.customTemplates||{}),
+        _standaloneProjectId:local.standaloneProjectId||null};
+    // Ensure the hidden Standalone Items project exists in Notion
+    await ensureStandaloneProject();
     if(ov)ov.style.display='none';
     renderAll();
   }catch(err){
@@ -902,16 +931,41 @@ async function doCreateItem(){
     activeStageIdx=0;activeTab='pipeline';renderAll();syncDone();
   }catch(err){syncFail('Could not create item: '+err.message);}
 }
-function doCreateStandalone(){
-  // Standalones need a project relation in Notion -- store locally only (Phase 2 limitation)
+async function doCreateStandalone(){
   const t=gv('st-title');if(!t){document.getElementById('st-title').focus();return;}
   const edSel=document.getElementById('st-ed').value;
   const edition=edSel==='custom'?gv('st-ed-c'):edSel;
   const etype=document.getElementById('st-etype').value;
-  const item={id:uid(),title:t,sub:gv('st-sub'),edition:edition||'',type:modalStPlat,etype:modalStPlat==='etsy'?etype:'',activeStage:0,stages:buildStages(modalStPlat,etype),perf:{logs:[]}};
-  if(!DB.standalone)DB.standalone=[];
-  DB.standalone.push(item);saveLocalOnly();closeModal('standalone');
-  SEL={type:'standalone',projId:null,collId:null,itemId:item.id};activeStageIdx=0;activeTab='pipeline';renderAll();
+  const stages=buildStages(modalStPlat,etype);
+  closeModal('standalone');
+  const projNid=DB._standaloneProjectId;
+  if(!projNid){
+    // Fallback: local-only if standalone project not yet bootstrapped
+    const item={id:uid(),title:t,sub:gv('st-sub'),edition:edition||'',type:modalStPlat,etype:modalStPlat==='etsy'?etype:'',activeStage:0,stages,perf:{logs:[]}};
+    if(!DB.standalone)DB.standalone=[];
+    DB.standalone.push(item);saveLocalOnly();
+    SEL={type:'standalone',projId:null,collId:null,itemId:item.id};activeStageIdx=0;activeTab='pipeline';renderAll();
+    showToast('Standalone project not ready yet. Item saved locally.');
+    return;
+  }
+  syncStart();
+  try{
+    const r=await api('POST','create-item',{
+      title:t,type:modalStPlat,etype:modalStPlat==='etsy'?etype:'',edition:edition||'',
+      projectNotionId:projNid,collectionNotionId:null,
+      stages:stages.map(s=>({name:s.name,tasks:s.tasks.map(tk=>({text:tk.text}))}))
+    });
+    const item={id:r.notionId,notionId:r.notionId,title:t,sub:gv('st-sub'),edition:edition||'',
+      type:modalStPlat,etype:modalStPlat==='etsy'?etype:'',activeStage:0,stages,perf:{logs:[]}};
+    (r.tasks||[]).forEach(rt=>{
+      const s=item.stages[rt.stageIndex];
+      if(s&&s.tasks[rt.taskIndex]){s.tasks[rt.taskIndex].notionId=rt.notionId;s.tasks[rt.taskIndex].id=rt.notionId;}
+    });
+    if(!DB.standalone)DB.standalone=[];
+    DB.standalone.push(item);
+    SEL={type:'standalone',projId:null,collId:null,itemId:item.id};activeStageIdx=0;activeTab='pipeline';
+    renderAll();syncDone();
+  }catch(err){syncFail('Could not create standalone item: '+err.message);}
 }
 
 // DELETE (optimistic: remove locally first, then sync to Notion)
@@ -956,7 +1010,7 @@ async function deleteStandalone(id){
   const item=(DB.standalone||[]).find(i=>i.id===id);
   DB.standalone=(DB.standalone||[]).filter(i=>i.id!==id);
   if(SEL.itemId===id)SEL={type:null,projId:null,collId:null,itemId:null};
-  saveLocalOnly();renderAll();
+  renderAll();
   if(item&&item.notionId){const tids=allTaskNids(item);syncStart();api('DELETE','delete-item',{notionId:item.notionId,taskNotionIds:tids}).then(syncDone).catch(e=>syncFail('Delete failed: '+e.message));}
 }
 
@@ -1016,7 +1070,7 @@ function renderTree(){
   const el=document.getElementById('tree');
   let h='';
   const fp=t=>filter==='all'||(filter===t);
-  DB.projects.forEach(pr=>{
+  DB.projects.filter(pr=>!pr._hidden).forEach(pr=>{
     const allItems=[];
     (pr.collections||[]).forEach(c=>(c.items||[]).forEach(i=>allItems.push(i)));
     const visible=allItems.some(i=>fp(i.type));
@@ -1465,7 +1519,7 @@ function stuckColor(item){
 // ── KPI HELPERS ──
 function getAllItems(){
   const items=[];
-  DB.projects.forEach(pr=>{
+  DB.projects.filter(pr=>!pr._hidden).forEach(pr=>{
     (pr.items||[]).forEach(i=>items.push({item:i,projTitle:pr.title,collTitle:null}));
     (pr.collections||[]).forEach(co=>(co.items||[]).forEach(i=>items.push({item:i,projTitle:pr.title,collTitle:co.title})));
   });
