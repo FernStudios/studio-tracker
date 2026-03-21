@@ -1913,6 +1913,7 @@ function renderTmplList(){
 function startNewTemplate(){
   editingTmplId=null;
   document.getElementById('tmpl-name').value='';
+  document.getElementById('tmpl-name').disabled=false;
   document.getElementById('tmpl-editor-title').textContent='New Template';
   document.getElementById('tmpl-stages').innerHTML='';
   addTemplateStage();
