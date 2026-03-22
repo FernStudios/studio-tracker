@@ -1079,11 +1079,25 @@ async function initApp(){
     const hn=document.getElementById('hdr-shop-name');
     if(hn)hn.textContent=DB.settings.shopName||'Studio Tracker';
 
-    const [projSnap,collSnap,itemsSnap]=await Promise.all([
+    const [projSnap,collSnap,itemsSnap,settingsSnap,platformsSnap]=await Promise.all([
       fdb.collection('projects').get(),
       fdb.collection('collections').get(),
-      fdb.collection('items').get()
+      fdb.collection('items').get(),
+      fdb.collection('settings').doc('app').get(),
+      fdb.collection('settings').doc('platforms').get()
     ]);
+    // Load persisted settings from Firestore (overrides localStorage defaults)
+    if(settingsSnap.exists){
+      const sd=settingsSnap.data();
+      DB.settings={...DB.settings,...sd};
+      stuckDays=parseInt(DB.settings.stuckDays||DB.settings.stuckThreshold)||14;
+      const hn=document.getElementById('hdr-shop-name');
+      if(hn)hn.textContent=DB.settings.shopName||'Studio Tracker';
+    }
+    if(platformsSnap.exists&&platformsSnap.data().platforms&&platformsSnap.data().platforms.length){
+      DB.platforms=platformsSnap.data().platforms;
+    }
+    saveLocal();
 
     DB.projects=projSnap.docs.map(doc=>({id:doc.id,...doc.data(),collapsed:doc.data().collapsed!==false,collections:[],items:[]}));
     const collMap={};
@@ -1125,6 +1139,7 @@ async function initApp(){
       renderAll();
     }
     ensureStandaloneProject().catch(()=>{});
+    loadIdeas().catch(()=>{});
   }catch(err){
     if(ov)ov.style.display='none';
     if(ev)ev.style.display='flex';
@@ -2353,14 +2368,7 @@ function buildDynamicFilterTabs(){
   // Rebuild setFilter to use platformId
 }
 
-// Override setFilter to handle dynamic platform IDs
-function setFilter(f){
-  filter=f;
-  document.querySelectorAll('.ftab').forEach(el=>el.classList.remove('fa','fk','fe'));
-  const activeBtn=document.getElementById('tab-'+f)||document.getElementById('tab-all');
-  if(activeBtn)activeBtn.classList.add('fa');
-  renderTree();
-}
+// setFilter: see primary definition above
 
 
 const ICON_CATS = typeof ICONS !== 'undefined' ? Object.entries(ICONS).map(([label,icons])=>({label,icons})) : [
@@ -3131,6 +3139,7 @@ function renderPricingTab(item,delFn){
   const targetTakeHome=parseFloat(pr.targetTakeHome)||0;
   const fileSizeMb=parseFloat(pr.fileSizeMb)||2;
   const smallDev=pr.smallDev||false;
+  const iid=item.id;
 
   // Method 1: cost-plus
   let cpPrice=null,cpNote='';
@@ -3147,7 +3156,7 @@ function renderPricingTab(item,delFn){
   let roiPrice=null,roiNote='';
   if(totalCosts>0&&monthlySales>0){
     roiPrice=totalCosts/(months*monthlySales);
-    roiNote='Recover '+c+totalCosts.toFixed(2)+' in '+months+' months at '+monthlySales+' sales/mo = '+Math.round(months*monthlySales)+' total sales needed. Minimum net price: '+c+roiPrice.toFixed(2);
+    roiNote='Recover '+c+totalCosts.toFixed(2)+' in '+months+' months at '+monthlySales+' sales/mo = '+Math.round(months*monthlySales)+' total sales needed. Min price: '+c+roiPrice.toFixed(2);
   } else if(totalCosts===0){
     roiNote='Add costs on the P&L tab to use this calculator';
   } else {
@@ -3160,7 +3169,7 @@ function renderPricingTab(item,delFn){
     if(model.type==='kdp'){
       const r=kdpPriceForNet(targetTakeHome,fileSizeMb);
       royaltyListPrice=r.price;tierOk=r.ok;tierLabel=r.tier;
-      if(!r.ok&&r.priceFallback){royaltyNote='$'+r.price.toFixed(2)+' falls outside 70% tier. At 35%: $'+r.priceFallback.toFixed(2);}
+      if(!r.ok&&r.priceFallback)royaltyNote='$'+r.price.toFixed(2)+' outside 70% tier. At 35%: $'+(r.priceFallback||0).toFixed(2);
       const check=calcKdpNet(r.price,fileSizeMb);royaltyBreakdown=check.breakdown;
       if(check.warning)royaltyNote=check.warning;
     } else if(model.type==='etsy'){
@@ -3172,12 +3181,11 @@ function renderPricingTab(item,delFn){
     } else {
       const cut=parseFloat(model.cutPct)||0;
       royaltyListPrice=genericPriceForNet(targetTakeHome,cut);
-      royaltyNote=cut>0?'After '+cut+'% platform fee':'No platform fee set — configure in Settings → Platforms';
+      royaltyNote=cut>0?'After '+cut+'% platform fee':'No platform fee set — configure in Settings';
       if(cut>0){const check=calcGenericNet(royaltyListPrice,cut);royaltyBreakdown=check.breakdown;}
     }
   }
 
-  // Synthesis
   const suggestions=[];
   if(cpPrice)suggestions.push(cpPrice);
   if(roiPrice)suggestions.push(roiPrice);
@@ -3185,92 +3193,116 @@ function renderPricingTab(item,delFn){
   const recLow=suggestions.length?Math.min(...suggestions):null;
   const recHigh=suggestions.length?Math.max(...suggestions):null;
 
-  let h='<div class="pricing-body">';
+  // Build HTML using array join to avoid quote nesting issues
+  const rows=[];
+  rows.push('<div class="pricing-body">');
 
   // Recommendation banner
-  h+='<div class="pricing-rec">';
-  h+='<div class="pricing-rec-lbl">Suggested Price Range</div>';
+  rows.push('<div class="pricing-rec">');
+  rows.push('<div class="pricing-rec-lbl">Suggested Price Range</div>');
   if(suggestions.length>=2){
-    h+='<div class="pricing-rec-range">'+c+recLow.toFixed(2)+' – '+c+recHigh.toFixed(2)+'</div>';
-    h+='<div class="pricing-rec-sub">Based on '+suggestions.length+' methods · Final price is your call</div>';
+    rows.push('<div class="pricing-rec-range">'+c+recLow.toFixed(2)+' – '+c+recHigh.toFixed(2)+'</div>');
+    rows.push('<div class="pricing-rec-sub">Based on '+suggestions.length+' methods · Final price is your call</div>');
   } else if(suggestions.length===1){
-    h+='<div class="pricing-rec-range">'+c+suggestions[0].toFixed(2)+'</div>';
-    h+='<div class="pricing-rec-sub">From 1 method · Complete more fields for a fuller picture</div>';
+    rows.push('<div class="pricing-rec-range">'+c+suggestions[0].toFixed(2)+'</div>');
+    rows.push('<div class="pricing-rec-sub">Complete more fields for a fuller picture</div>');
   } else {
-    h+='<div class="pricing-rec-range" style="font-size:1rem;color:var(--txtmu)">Fill in the fields below</div>';
-    h+='<div class="pricing-rec-sub">Enter costs, expected sales, or a target take-home to see suggestions</div>';
+    rows.push('<div class="pricing-rec-range" style="font-size:1rem;color:var(--txtmu)">Fill in the fields below</div>');
+    rows.push('<div class="pricing-rec-sub">Enter costs, expected sales, or a target take-home</div>');
   }
-  h+='<div class="pricing-saved-row">';
-  h+='<span class="pricing-saved-lbl">Your set price:</span>';
-  h+='<span class="pricing-saved-val" id="pricing-saved-disp-'+item.id+'">'+(pr.savedPrice?c+parseFloat(pr.savedPrice).toFixed(2):'Not set')+'</span>';
-  h+='<input class="pricing-inp" type="number" step="0.01" min="0" placeholder="0.00" value="'+(pr.savedPrice||'')+'" oninput="savePricingField(''+item.id+'','savedPrice',parseFloat(this.value)||null);const d=document.getElementById('pricing-saved-disp-'+item.id+'');if(d)d.textContent=this.value?''+c+''+parseFloat(this.value).toFixed(2):'Not set'">';
-  h+='</div></div>';
+  // Saved price row — use data attribute + separate listener to avoid quote hell
+  const savedVal=pr.savedPrice?parseFloat(pr.savedPrice).toFixed(2):'';
+  rows.push('<div class="pricing-saved-row">');
+  rows.push('<span class="pricing-saved-lbl">Your set price:</span>');
+  rows.push('<span class="pricing-saved-val" id="psd-'+iid+'">'+(pr.savedPrice?c+savedVal:'Not set')+'</span>');
+  rows.push('<input class="pricing-inp" type="number" step="0.01" min="0" placeholder="0.00" value="'+savedVal+'" data-iid="'+iid+'" data-field="savedPrice" onchange="onPricingChange(this)">');
+  rows.push('</div></div>');
 
   // Platform note
-  if(model.type==='kdp') h+='<div class="pricing-platform-note">KDP: 70% royalty available $2.99–$9.99 · 35% outside that range · $0.15/MB delivery fee deducted</div>';
-  else if(model.type==='etsy') h+='<div class="pricing-platform-note">Etsy: 6.5% transaction fee + $0.20 listing fee + ~3.5% payment processing per sale</div>';
-  else if(model.type==='app') h+='<div class="pricing-platform-note">App Store / Play Store: 30% cut (15% with Small Business Program)</div>';
-  else if(model.cutPct) h+='<div class="pricing-platform-note">'+platName+': '+model.cutPct+'% platform fee configured</div>';
-  else h+='<div class="pricing-platform-note" style="color:var(--gold);border-color:var(--gold-l);background:var(--gold-p)">'+platName+': No platform fee set · <span style="cursor:pointer;text-decoration:underline" onclick="setTopTab('settings')">Set one in Settings → Platforms</span> for accurate backward pricing</div>';
+  if(model.type==='kdp') rows.push('<div class="pricing-platform-note">KDP: 70% royalty at $2.99–$9.99 · 35% outside that · $0.15/MB delivery fee deducted</div>');
+  else if(model.type==='etsy') rows.push('<div class="pricing-platform-note">Etsy: 6.5% transaction + $0.20 listing + ~3.5% payment processing</div>');
+  else if(model.type==='app') rows.push('<div class="pricing-platform-note">App Store / Play Store: 30% cut (15% Small Business Program)</div>');
+  else if(model.cutPct) rows.push('<div class="pricing-platform-note">'+esc(platName)+': '+model.cutPct+'% platform fee configured</div>');
+  else rows.push('<div class="pricing-platform-note" style="color:var(--gold);border-color:var(--gold-l);background:var(--gold-p)">'+esc(platName)+': No platform fee set · <span style="cursor:pointer;text-decoration:underline" onclick="setTopTab(\'settings\')">Set in Settings → Platforms</span></div>');
 
-  // Shared inputs
-  h+='<div class="pricing-method" style="background:var(--bg);border-color:var(--bdrl)">';
-  h+='<div class="pricing-method-title" style="margin-bottom:10px">Shared Inputs</div>';
-  h+='<div class="pricing-input-row"><span class="pricing-input-lbl">Expected monthly sales</span>';
-  h+='<input class="pricing-inp" type="number" min="0" step="1" placeholder="e.g. 20" value="'+(pr.expectedMonthlySales||'')+'" oninput="savePricingField(''+item.id+'','expectedMonthlySales',parseFloat(this.value)||null);refreshPricingCalcs(''+item.id+'')"></div></div>';
+  // Shared inputs — use data attributes for all oninput handlers
+  rows.push('<div class="pricing-method" style="background:var(--bg);border-color:var(--bdrl)">');
+  rows.push('<div class="pricing-method-title" style="margin-bottom:10px">Shared Inputs</div>');
+  rows.push('<div class="pricing-input-row"><span class="pricing-input-lbl">Expected monthly sales</span>');
+  rows.push('<input class="pricing-inp" type="number" min="0" step="1" placeholder="e.g. 20" value="'+(pr.expectedMonthlySales||'')+'" data-iid="'+iid+'" data-field="expectedMonthlySales" onchange="onPricingChange(this)">');
+  rows.push('</div></div>');
 
   // Method 1
-  h+='<div class="pricing-method">';
-  h+='<div class="pricing-method-hdr"><span class="pricing-method-title">① Cost-Plus</span>';
-  h+='<span class="pricing-method-result">'+(cpPrice?c+cpPrice.toFixed(2):'—')+'</span></div>';
-  h+='<div class="pricing-input-row"><span class="pricing-input-lbl">Markup multiplier</span>';
-  h+='<input class="pricing-inp" type="number" min="1" step="0.5" placeholder="3" value="'+(pr.markupMultiplier||3)+'" oninput="savePricingField(''+item.id+'','markupMultiplier',parseFloat(this.value)||3);refreshPricingCalcs(''+item.id+'')">';
-  h+='<span style="font-size:.68rem;color:var(--txtmu)">× (costs ÷ monthly sales)</span></div>';
-  h+='<div class="pricing-note">'+cpNote+'</div>';
-  if(totalCosts>0)h+='<div class="pricing-breakdown">P&L costs: <b>'+c+totalCosts.toFixed(2)+'</b>'+(pnl.adSpend>0?' (incl. '+c+pnl.adSpend.toFixed(2)+' ad spend)':'')+'</div>';
-  h+='</div>';
+  rows.push('<div class="pricing-method">');
+  rows.push('<div class="pricing-method-hdr"><span class="pricing-method-title">① Cost-Plus</span>');
+  rows.push('<span class="pricing-method-result">'+(cpPrice?c+cpPrice.toFixed(2):'—')+'</span></div>');
+  rows.push('<div class="pricing-input-row"><span class="pricing-input-lbl">Markup multiplier</span>');
+  rows.push('<input class="pricing-inp" type="number" min="1" step="0.5" placeholder="3" value="'+(pr.markupMultiplier||3)+'" data-iid="'+iid+'" data-field="markupMultiplier" onchange="onPricingChange(this)">');
+  rows.push('<span style="font-size:.68rem;color:var(--txtmu)">× (costs ÷ monthly sales)</span></div>');
+  rows.push('<div class="pricing-note">'+cpNote+'</div>');
+  if(totalCosts>0)rows.push('<div class="pricing-breakdown">P&L costs: <b>'+c+totalCosts.toFixed(2)+'</b>'+(pnl.adSpend>0?' (incl. '+c+pnl.adSpend.toFixed(2)+' ad spend)':'')+'</div>');
+  rows.push('</div>');
 
   // Method 2
-  h+='<div class="pricing-method">';
-  h+='<div class="pricing-method-hdr"><span class="pricing-method-title">② Target Payback</span>';
-  h+='<span class="pricing-method-result">'+(roiPrice?c+roiPrice.toFixed(2):'—')+'</span></div>';
-  h+='<div class="pricing-input-row"><span class="pricing-input-lbl">Break-even in (months)</span>';
-  h+='<input class="pricing-inp" type="number" min="1" step="1" placeholder="6" value="'+(pr.targetMonths||6)+'" oninput="savePricingField(''+item.id+'','targetMonths',parseFloat(this.value)||6);refreshPricingCalcs(''+item.id+'')">';
-  h+='</div>';
-  h+='<div class="pricing-note">'+roiNote+'</div>';
-  if(totalCosts>0&&roiPrice)h+='<div class="pricing-breakdown">Minimum net per sale to hit target. Add platform fee margin before setting final price.</div>';
-  h+='</div>';
+  rows.push('<div class="pricing-method">');
+  rows.push('<div class="pricing-method-hdr"><span class="pricing-method-title">② Target Payback</span>');
+  rows.push('<span class="pricing-method-result">'+(roiPrice?c+roiPrice.toFixed(2):'—')+'</span></div>');
+  rows.push('<div class="pricing-input-row"><span class="pricing-input-lbl">Break-even in (months)</span>');
+  rows.push('<input class="pricing-inp" type="number" min="1" step="1" placeholder="6" value="'+(pr.targetMonths||6)+'" data-iid="'+iid+'" data-field="targetMonths" onchange="onPricingChange(this)">');
+  rows.push('</div>');
+  rows.push('<div class="pricing-note">'+roiNote+'</div>');
+  if(totalCosts>0&&roiPrice)rows.push('<div class="pricing-breakdown">Minimum net per sale. Add platform fee margin before setting final price.</div>');
+  rows.push('</div>');
 
   // Method 3
   const tierCls=model.type==='kdp'?(tierOk?'pt-green':'pt-amber'):'';
-  h+='<div class="pricing-method">';
-  h+='<div class="pricing-method-hdr"><span class="pricing-method-title">③ Platform Royalty (Backward)</span>';
-  h+='<span class="pricing-method-result">';
-  if(royaltyListPrice)h+=c+royaltyListPrice.toFixed(2)+(model.type==='kdp'?'<span class="pricing-tier-pill '+tierCls+'">'+tierLabel+'</span>':'');
-  else h+='—';
-  h+='</span></div>';
-  h+='<div class="pricing-input-row"><span class="pricing-input-lbl">Target take-home / sale</span>';
-  h+='<input class="pricing-inp" type="number" min="0" step="0.01" placeholder="e.g. 2.50" value="'+(pr.targetTakeHome||'')+'" oninput="savePricingField(''+item.id+'','targetTakeHome',parseFloat(this.value)||null);refreshPricingCalcs(''+item.id+'')">';
-  h+='</div>';
+  rows.push('<div class="pricing-method">');
+  rows.push('<div class="pricing-method-hdr"><span class="pricing-method-title">③ Platform Royalty (Backward)</span>');
+  rows.push('<span class="pricing-method-result">');
+  if(royaltyListPrice)rows.push(c+royaltyListPrice.toFixed(2)+(model.type==='kdp'?'<span class="pricing-tier-pill '+tierCls+'">'+tierLabel+'</span>':''));
+  else rows.push('—');
+  rows.push('</span></div>');
+  rows.push('<div class="pricing-input-row"><span class="pricing-input-lbl">Target take-home / sale</span>');
+  rows.push('<input class="pricing-inp" type="number" min="0" step="0.01" placeholder="e.g. 2.50" value="'+(pr.targetTakeHome||'')+'" data-iid="'+iid+'" data-field="targetTakeHome" onchange="onPricingChange(this)">');
+  rows.push('</div>');
   if(model.type==='kdp'){
-    h+='<div class="pricing-input-row"><span class="pricing-input-lbl">Ebook file size (MB)</span>';
-    h+='<input class="pricing-inp" type="number" min="0" step="0.1" placeholder="2" value="'+(pr.fileSizeMb||2)+'" oninput="savePricingField(''+item.id+'','fileSizeMb',parseFloat(this.value)||0);refreshPricingCalcs(''+item.id+'')">';
-    h+='<span style="font-size:.63rem;color:var(--txtmu)">for delivery fee</span></div>';
+    rows.push('<div class="pricing-input-row"><span class="pricing-input-lbl">Ebook file size (MB)</span>');
+    rows.push('<input class="pricing-inp" type="number" min="0" step="0.1" placeholder="2" value="'+(pr.fileSizeMb||2)+'" data-iid="'+iid+'" data-field="fileSizeMb" onchange="onPricingChange(this)">');
+    rows.push('<span style="font-size:.63rem;color:var(--txtmu)">for delivery fee</span></div>');
   }
   if(model.type==='app'){
-    h+='<div class="pricing-input-row"><label style="display:flex;align-items:center;gap:7px;font-size:.72rem;color:var(--txtm);cursor:pointer"><input type="checkbox" '+(pr.smallDev?'checked':'')+' onchange="savePricingField(''+item.id+'','smallDev',this.checked);refreshPricingCalcs(''+item.id+'')"> Small Business Program (15% cut)</label></div>';
+    rows.push('<div class="pricing-input-row"><label style="display:flex;align-items:center;gap:7px;font-size:.72rem;color:var(--txtm);cursor:pointer">');
+    rows.push('<input type="checkbox" '+(pr.smallDev?'checked':'')+' data-iid="'+iid+'" data-field="smallDev" onchange="onPricingCheckbox(this)"> Small Business Program (15% cut)</label></div>');
   }
-  if(royaltyNote)h+='<div class="pricing-note">'+royaltyNote+'</div>';
-  if(royaltyBreakdown)h+='<div class="pricing-breakdown">'+royaltyBreakdown+'</div>';
-  h+='</div>';
+  if(royaltyNote)rows.push('<div class="pricing-note">'+royaltyNote+'</div>');
+  if(royaltyBreakdown)rows.push('<div class="pricing-breakdown">'+royaltyBreakdown+'</div>');
+  rows.push('</div>');
 
   // Notes
-  h+='<div style="margin-top:4px"><label class="mlbl">Pricing Notes</label>';
-  h+='<textarea class="minp" rows="3" style="resize:vertical" placeholder="Comp prices, launch strategy, price experiments…" oninput="savePricingField(''+item.id+'','notes',this.value)">'+esc(pr.notes||'')+'</textarea></div>';
+  rows.push('<div style="margin-top:4px"><label class="mlbl">Pricing Notes</label>');
+  rows.push('<textarea class="minp" rows="3" style="resize:vertical" placeholder="Comp prices, launch strategy…" data-iid="'+iid+'" data-field="notes" onblur="onPricingChange(this)">'+esc(pr.notes||'')+'</textarea></div>');
+  rows.push('<div style="margin-top:18px"><button style="padding:8px 14px;border-radius:var(--rs);border:1.5px solid var(--bdr);background:transparent;color:var(--rose);font-family:\'Nunito\',sans-serif;font-size:.72rem;font-weight:600;cursor:pointer" onclick="'+delFn+'">Delete Item</button></div>');
+  rows.push('</div>');
+  return rows.join('\n');
+}
 
-  h+='<div style="margin-top:18px"><button style="padding:8px 14px;border-radius:var(--rs);border:1.5px solid var(--bdr);background:transparent;color:var(--rose);font-family:'Nunito',sans-serif;font-size:.72rem;font-weight:600;cursor:pointer" onclick="'+delFn+'">Delete Item</button></div>';
-  h+='</div>';
-  return h;
+// Unified pricing input handler (uses data attributes — no inline quote nesting)
+function onPricingChange(el){
+  const iid=el.dataset.iid;const field=el.dataset.field;
+  const val=el.type==='number'?(parseFloat(el.value)||null):el.value;
+  savePricingField(iid,field,val);
+  if(field!=='notes'&&field!=='savedPrice'){
+    refreshPricingCalcs(iid);
+  } else if(field==='savedPrice'){
+    const d=document.getElementById('psd-'+iid);
+    const c=DB.settings&&DB.settings.currency||'$';
+    if(d)d.textContent=val?c+parseFloat(val).toFixed(2):'Not set';
+  }
+}
+function onPricingCheckbox(el){
+  const iid=el.dataset.iid;const field=el.dataset.field;
+  savePricingField(iid,field,el.checked);
+  refreshPricingCalcs(iid);
 }
 
 function refreshPricingCalcs(itemId){
