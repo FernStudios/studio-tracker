@@ -379,6 +379,45 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--txt);displ
 .pr-l{font-size:.58rem;color:var(--txtmu);margin-top:1px}
 @keyframes ldpulse{0%,100%{opacity:.4}50%{opacity:1}}
 
+.pnl-body{flex:1;overflow-y:auto;padding:14px 22px}
+.pnl-body::-webkit-scrollbar{width:4px}
+.pnl-body::-webkit-scrollbar-thumb{background:var(--lav-l);border-radius:4px}
+.pnl-summary{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:9px;margin-bottom:16px}
+.pnl-card{border-radius:var(--rs);padding:12px 14px;border-left:3px solid var(--lav)}
+.pnl-card-rev{border-left-color:var(--sage);background:var(--sage-p)}
+.pnl-card-cost{border-left-color:var(--rose);background:#fef0f4}
+.pnl-card-profit{border-left-color:var(--gold);background:var(--gold-p)}
+.pnl-card-roi{border-left-color:var(--lav);background:var(--lav-p)}
+.pnl-card-lbl{font-size:.59rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--txtmu);margin-bottom:4px}
+.pnl-card-val{font-family:'Playfair Display',serif;font-size:1.18rem;color:var(--txt);line-height:1}
+.pnl-card-sub{font-size:.59rem;color:var(--txtmu);margin-top:3px}
+.pnl-positive{color:var(--sage)!important}
+.pnl-negative{color:var(--rose)!important}
+.pnl-payback{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:var(--rs);border:1.5px solid var(--bdr);background:var(--sf);margin-bottom:14px}
+.pnl-payback-ico{font-size:1.3rem;flex-shrink:0}
+.pnl-payback-txt{font-size:.78rem;color:var(--txt);line-height:1.45}
+.pnl-payback-sub{font-size:.63rem;color:var(--txtmu);margin-top:2px}
+.pnl-section-title{font-size:.62rem;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--txtmu);margin-bottom:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--bdrl)}
+.pnl-cost-row{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:var(--rs);border:1.5px solid var(--bdrl);background:var(--sf);margin-bottom:4px;box-shadow:0 1px 3px rgba(60,40,120,.04)}
+.pnl-cost-cat{font-size:.57rem;font-weight:800;padding:2px 7px;border-radius:20px;border:1px solid;text-transform:uppercase;letter-spacing:.06em;flex-shrink:0}
+.pnl-cat-production{color:var(--lav);border-color:var(--lav-l);background:var(--lav-p)}
+.pnl-cat-subscription{color:var(--gold);border-color:var(--gold-l);background:var(--gold-p)}
+.pnl-cat-fee{color:var(--txtmu);border-color:var(--bdr);background:var(--s2)}
+.pnl-cat-adspend{color:var(--rose);border-color:var(--rose);background:#fef0f4}
+.pnl-cost-desc{flex:1;font-size:.79rem;color:var(--txt);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pnl-cost-date{font-size:.6rem;color:var(--txtmu);flex-shrink:0}
+.pnl-cost-amt{font-size:.82rem;font-weight:700;color:var(--rose);flex-shrink:0;min-width:56px;text-align:right}
+.pnl-add-form{background:var(--lav-xp);border:1.5px solid var(--lav-l);border-radius:var(--rs);padding:13px;margin-bottom:10px}
+.pnl-add-form-title{font-size:.74rem;font-weight:700;color:var(--lav);margin-bottom:10px}
+.kpi-pnl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:9px;margin-bottom:14px}
+.kpi-pnl-row{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg);border-radius:var(--rs);cursor:pointer;transition:all .18s;border:1.5px solid transparent}
+.kpi-pnl-row:hover{border-color:var(--lav-l);background:var(--lav-p)}
+.kpi-pnl-name{font-size:.76rem;font-weight:700;color:var(--txt);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi-pnl-meta{font-size:.6rem;color:var(--txtmu);margin-top:1px}
+.pnl-bar-pos{height:4px;background:var(--sage);border-radius:2px;min-width:2px;max-width:100%}
+.pnl-bar-neg{height:4px;background:var(--rose);border-radius:2px;min-width:2px;max-width:100%}
+
+
 .kpi-sect{background:var(--sf);border:1.5px solid var(--bdr);border-radius:var(--r);padding:16px 18px;margin-bottom:14px;box-shadow:var(--sh)}
 .kpi-sect-title{font-size:.65rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--txtmu);margin-bottom:12px}
 .kpi-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:9px;margin-bottom:10px}
@@ -1291,10 +1330,10 @@ async function doCreateItem(){
     const ref=await fdb.collection('items').add({
       title:t,edition:edition||'',platformId:platId,templateId:tmplId,icon,
       projectId:pr.id,collectionId:co.id,isStandalone:false,
-      status:'Not Started',progressPct:0,activeStage:0,stages,perf:{logs:[]},notes:[],
+      status:'Not Started',progressPct:0,activeStage:0,stages,perf:{logs:[]},notes:[],costs:[],
       createdAt:firebase.firestore.FieldValue.serverTimestamp()
     });
-    const item={id:ref.id,title:t,edition:edition||'',platformId:platId,templateId:tmplId,icon,activeStage:0,stages,perf:{logs:[]},notes:[],projectId:pr.id,collectionId:co.id,isStandalone:false};
+    const item={id:ref.id,title:t,edition:edition||'',platformId:platId,templateId:tmplId,icon,activeStage:0,stages,perf:{logs:[]},notes:[],costs:[],projectId:pr.id,collectionId:co.id,isStandalone:false};
     co.items.push(item);
     SEL={type:'item',projId:pendingProjId,collId:pendingCollId,itemId:item.id};
     activeStageIdx=0;activeTab='pipeline';renderAll();syncDone();
@@ -1318,10 +1357,10 @@ async function doCreateStandalone(){
     const ref=await fdb.collection('items').add({
       title:t,sub:gv('st-sub'),edition:edition||'',platformId:platId,templateId:tmplId,icon,
       projectId:projNid,collectionId:null,isStandalone:true,
-      status:'Not Started',progressPct:0,activeStage:0,stages,perf:{logs:[]},notes:[],
+      status:'Not Started',progressPct:0,activeStage:0,stages,perf:{logs:[]},notes:[],costs:[],
       createdAt:firebase.firestore.FieldValue.serverTimestamp()
     });
-    const item={id:ref.id,title:t,sub:gv('st-sub'),edition:edition||'',platformId:platId,templateId:tmplId,icon,activeStage:0,stages,perf:{logs:[]},notes:[],isStandalone:true,projectId:projNid};
+    const item={id:ref.id,title:t,sub:gv('st-sub'),edition:edition||'',platformId:platId,templateId:tmplId,icon,activeStage:0,stages,perf:{logs:[]},notes:[],costs:[],isStandalone:true,projectId:projNid};
     if(!DB.standalone)DB.standalone=[];
     DB.standalone.push(item);
     SEL={type:'standalone',projId:null,collId:null,itemId:item.id};activeStageIdx=0;activeTab='pipeline';
@@ -1345,13 +1384,13 @@ async function doCreateDirectItem(){
   try{
     if(collId){
       const co=(pr.collections||[]).find(c=>c.id===collId);if(!co){syncFail('Collection not found');return;}
-      const ref=await fdb.collection('items').add({title:t,edition:edition||'',platformId:platId,templateId:tmplId,icon,projectId:pr.id,collectionId:co.id,isStandalone:false,status:'Not Started',progressPct:0,activeStage:0,stages,perf:{logs:[]},notes:[],createdAt:firebase.firestore.FieldValue.serverTimestamp()});
-      const item={id:ref.id,title:t,edition:edition||'',platformId:platId,templateId:tmplId,icon,activeStage:0,stages,perf:{logs:[]},notes:[],projectId:pr.id,collectionId:co.id,isStandalone:false};
+      const ref=await fdb.collection('items').add({title:t,edition:edition||'',platformId:platId,templateId:tmplId,icon,projectId:pr.id,collectionId:co.id,isStandalone:false,status:'Not Started',progressPct:0,activeStage:0,stages,perf:{logs:[]},notes:[],costs:[],createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+      const item={id:ref.id,title:t,edition:edition||'',platformId:platId,templateId:tmplId,icon,activeStage:0,stages,perf:{logs:[]},notes:[],costs:[],projectId:pr.id,collectionId:co.id,isStandalone:false};
       if(!co.items)co.items=[];co.items.push(item);
       SEL={type:'item',projId,collId,itemId:item.id};
     } else {
-      const ref=await fdb.collection('items').add({title:t,edition:edition||'',platformId:platId,templateId:tmplId,icon,projectId:pr.id,collectionId:null,isStandalone:false,status:'Not Started',progressPct:0,activeStage:0,stages,perf:{logs:[]},notes:[],createdAt:firebase.firestore.FieldValue.serverTimestamp()});
-      const item={id:ref.id,title:t,edition:edition||'',platformId:platId,templateId:tmplId,icon,activeStage:0,stages,perf:{logs:[]},notes:[],projectId:pr.id,collectionId:null,isStandalone:false};
+      const ref=await fdb.collection('items').add({title:t,edition:edition||'',platformId:platId,templateId:tmplId,icon,projectId:pr.id,collectionId:null,isStandalone:false,status:'Not Started',progressPct:0,activeStage:0,stages,perf:{logs:[]},notes:[],costs:[],createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+      const item={id:ref.id,title:t,edition:edition||'',platformId:platId,templateId:tmplId,icon,activeStage:0,stages,perf:{logs:[]},notes:[],costs:[],projectId:pr.id,collectionId:null,isStandalone:false};
       if(!pr.items)pr.items=[];pr.items.push(item);
       SEL={type:'directitem',projId,collId:null,itemId:item.id};
     }
@@ -1672,7 +1711,7 @@ function renderItemView(el,item){
     return `<div class="sp" onclick="setStage(${i})"><div class="sdot ${dc}">${s.completed?'✓':i+1}</div><div class="sname ${nc}">${esc(s.name)}</div></div>`;
   }).join('');
   const delFn=SEL.type==='standalone'?`deleteStandalone('${item.id}')`:SEL.type==='directitem'?`deleteDirectItem('${SEL.projId}','${item.id}')`:`deleteItem('${SEL.projId}','${SEL.collId}','${item.id}')`;
-  const tabs=['pipeline','performance','notes'].map(t=>`<button class="vtab${activeTab===t?' va':''}" onclick="setTab('${t}')">${t==='pipeline'?'Pipeline':t==='performance'?'Performance':'Notes'}</button>`).join('');
+  const tabs=['pipeline','performance','notes','pnl'].map(t=>`<button class="vtab${activeTab===t?' va':''}" onclick="setTab('${t}')">${t==='pipeline'?'Pipeline':t==='performance'?'Performance📊':t==='notes'?'Notes':'P&L 💰'}</button>`).join('');
 
   let h=`<div class="proj-hdr"><div class="proj-hdr-top"><div>
     ${breadcrumb}
@@ -1744,6 +1783,8 @@ function renderItemView(el,item){
     h+=renderPerfTab(item,delFn);
   } else if(activeTab==='notes'){
     h+=renderNotesTab(item,delFn);
+  } else if(activeTab==='pnl'){
+    h+=renderPnLTab(item,delFn);
   }
   el.innerHTML=h;
 }
@@ -2163,6 +2204,7 @@ function renderKPI(wrap){
       </div>
     </div>
   </div>`;
+  h+=renderKpiPnLSection();
   wrap.innerHTML=h;
 }
 function buildDynamicFilterTabs(){
@@ -2254,6 +2296,7 @@ function renderSettings(){
       <button onclick="exportData()" style="padding:9px 16px;border-radius:var(--rs);border:1.5px solid var(--bdr);background:transparent;color:var(--txtm);font-family:'Nunito',sans-serif;font-size:.78rem;font-weight:700;cursor:pointer">📥 Export All Data (JSON)</button>
       <div style="font-size:.65rem;color:var(--txtmu);margin-top:7px">Downloads a complete backup of all your projects, collections, items, and performance data.</div>
     </div>
+    ${renderStudioExpSettings()}
   </div>`;
   el.innerHTML=h;
   // bind shop name input
@@ -2592,6 +2635,298 @@ function exportData(){
 
 function show(id){const e=document.getElementById(id);if(e)e.style.display='flex';}
 function hide(id){const e=document.getElementById(id);if(e)e.style.display='none';}
+
+
+// ══════════════════════════════════════════════════════════════════
+// P&L SYSTEM
+// ══════════════════════════════════════════════════════════════════
+
+function calcItemPnL(item){
+  const logs=(item.perf&&item.perf.logs)||[];
+  const latestLog=logs.length?logs[logs.length-1]:null;
+  const revenue=latestLog?(parseFloat(latestLog.crev)||0):0;
+  const adSpend=logs.reduce((a,l)=>a+(parseFloat(l.adspend)||0),0);
+  const itemCosts=(item.costs||[]).reduce((a,c)=>a+(parseFloat(c.amount)||0),0);
+  const totalCosts=itemCosts+adSpend;
+  const gross=revenue-totalCosts;
+  const roi=totalCosts>0?Math.round((gross/totalCosts)*100):null;
+  let paybackDate=null;
+  for(const l of logs){
+    const cumRev=parseFloat(l.crev)||0;
+    if(cumRev>=(itemCosts+adSpend)&&(itemCosts+adSpend)>0){paybackDate=l.date;break;}
+  }
+  return{revenue,adSpend,itemCosts,totalCosts,gross,roi,paybackDate,hasData:revenue>0||totalCosts>0};
+}
+
+function calcProjPnL(proj){
+  const items=[];
+  (proj.items||[]).forEach(i=>items.push(i));
+  (proj.collections||[]).forEach(co=>(co.items||[]).forEach(i=>items.push(i)));
+  return aggregatePnL(items);
+}
+
+function aggregatePnL(items){
+  let revenue=0,adSpend=0,itemCosts=0;
+  items.forEach(item=>{const p=calcItemPnL(item);revenue+=p.revenue;adSpend+=p.adSpend;itemCosts+=p.itemCosts;});
+  const totalCosts=itemCosts+adSpend;
+  const gross=revenue-totalCosts;
+  const roi=totalCosts>0?Math.round((gross/totalCosts)*100):null;
+  return{revenue,adSpend,itemCosts,totalCosts,gross,roi,hasData:revenue>0||totalCosts>0};
+}
+
+function calcStudioPnL(){
+  const items=[];
+  getAllItems().forEach(({item})=>items.push(item));
+  const base=aggregatePnL(items);
+  const studioExp=(DB.settings&&DB.settings.studioExpenses||[]).reduce((a,e)=>a+(parseFloat(e.amount)||0),0);
+  const totalWithStudio=base.totalCosts+studioExp;
+  const grossWithStudio=base.revenue-totalWithStudio;
+  const roiWithStudio=totalWithStudio>0?Math.round((grossWithStudio/totalWithStudio)*100):null;
+  return{...base,studioExp,totalWithStudio,grossWithStudio,roiWithStudio};
+}
+
+let _pnlAddOpen={};
+function renderPnLTab(item,delFn){
+  const pnl=calcItemPnL(item);
+  const c=DB.settings&&DB.settings.currency||'$';
+  const costs=item.costs||[];
+  const logs=(item.perf&&item.perf.logs)||[];
+  const adFromLogs=logs.reduce((a,l)=>a+(parseFloat(l.adspend)||0),0);
+  const profitCls=pnl.gross>=0?'pnl-positive':'pnl-negative';
+  const roiCls=pnl.roi!=null?(pnl.roi>=0?'pnl-positive':'pnl-negative'):'';
+  let h=`<div class="pnl-body">
+    <div class="pnl-summary">
+      <div class="pnl-card pnl-card-rev"><div class="pnl-card-lbl">Revenue</div><div class="pnl-card-val">${pnl.revenue>0?c+pnl.revenue.toFixed(2):'—'}</div><div class="pnl-card-sub">Cumulative</div></div>
+      <div class="pnl-card pnl-card-cost"><div class="pnl-card-lbl">Total Costs</div><div class="pnl-card-val">${pnl.totalCosts>0?c+pnl.totalCosts.toFixed(2):'—'}</div><div class="pnl-card-sub">${pnl.itemCosts>0?c+pnl.itemCosts.toFixed(2)+' prod':''}</div></div>
+      <div class="pnl-card pnl-card-profit"><div class="pnl-card-lbl">Gross Profit</div><div class="pnl-card-val ${profitCls}">${pnl.hasData?c+pnl.gross.toFixed(2):'—'}</div><div class="pnl-card-sub">${pnl.gross>=0?'profitable':'not recovered'}</div></div>
+      <div class="pnl-card pnl-card-roi"><div class="pnl-card-lbl">ROI</div><div class="pnl-card-val ${roiCls}">${pnl.roi!=null?pnl.roi+'%':'—'}</div><div class="pnl-card-sub">return on investment</div></div>
+    </div>`;
+  if(pnl.totalCosts>0){
+    if(pnl.paybackDate){
+      h+=`<div class="pnl-payback"><div class="pnl-payback-ico">🎉</div><div><div class="pnl-payback-txt" style="color:var(--sage);font-weight:700">Costs recovered!</div><div class="pnl-payback-sub">Broke even on ${pnl.paybackDate} · Earning pure profit since</div></div></div>`;
+    } else if(pnl.revenue>0){
+      const remaining=pnl.totalCosts-pnl.revenue;
+      const pct=Math.min(100,Math.round((pnl.revenue/pnl.totalCosts)*100));
+      h+=`<div class="pnl-payback"><div class="pnl-payback-ico">⏳</div><div style="flex:1"><div class="pnl-payback-txt">Payback ${pct}% complete</div><div class="pnl-payback-sub">${c}${remaining.toFixed(2)} still to recover</div><div style="height:5px;background:var(--bdrl);border-radius:3px;overflow:hidden;margin-top:6px"><div style="height:100%;background:var(--sage);border-radius:3px;width:${pct}%"></div></div></div></div>`;
+    } else {
+      h+=`<div class="pnl-payback"><div class="pnl-payback-ico">💸</div><div><div class="pnl-payback-txt">No revenue logged yet</div><div class="pnl-payback-sub">Log performance entries to track payback</div></div></div>`;
+    }
+  }
+  h+=`<div class="pnl-section-title">Production &amp; Fee Costs</div>`;
+  if(_pnlAddOpen[item.id]){
+    h+=`<div class="pnl-add-form">
+      <div class="pnl-add-form-title">Add Cost Entry</div>
+      <div class="g2"><div><label class="mlbl">Date</label><input class="minp" type="date" id="pnl-add-date" value="${new Date().toISOString().split('T')[0]}"></div>
+      <div><label class="mlbl">Category</label><select class="msel" id="pnl-add-cat">
+        <option value="production">Production (cover, editing…)</option>
+        <option value="subscription">Subscription / Tool</option>
+        <option value="fee">Platform Fee</option>
+      </select></div></div>
+      <label class="mlbl" style="margin-top:8px">Description</label>
+      <input class="minp" id="pnl-add-desc" placeholder="e.g. Cover design, formatting, listing fee…">
+      <label class="mlbl" style="margin-top:8px">Amount (${c})</label>
+      <input class="minp" type="number" id="pnl-add-amt" placeholder="0.00" step="0.01" min="0">
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn-cre" onclick="savePnLCost('${item.id}')">Add Cost</button>
+        <button class="btn-can" onclick="_pnlAddOpen['${item.id}']=false;setTab('pnl')">Cancel</button>
+      </div></div>`;
+  } else {
+    h+=`<button onclick="_pnlAddOpen['${item.id}']=true;setTab('pnl')" style="font-size:.72rem;padding:7px 14px;border-radius:var(--rs);border:1.5px dashed var(--lav-l);background:var(--lav-p);color:var(--lav);cursor:pointer;font-family:inherit;margin-bottom:10px">+ Add Cost Entry</button>`;
+  }
+  if(costs.length){
+    costs.forEach(cost=>{
+      h+=`<div class="pnl-cost-row">
+        <span class="pnl-cost-cat pnl-cat-${cost.category}">${cost.category==='production'?'Prod':cost.category==='subscription'?'Sub':'Fee'}</span>
+        <span class="pnl-cost-desc">${esc(cost.description||'')}</span>
+        <span class="pnl-cost-date">${cost.date||''}</span>
+        <span class="pnl-cost-amt">−${c}${parseFloat(cost.amount||0).toFixed(2)}</span>
+        <button class="tdel" onclick="deletePnLCost('${item.id}','${cost.id}')">✕</button>
+      </div>`;
+    });
+  } else if(!_pnlAddOpen[item.id]){
+    h+=`<div style="font-size:.75rem;color:var(--txtmu);font-style:italic;padding:6px 0">No cost entries yet.</div>`;
+  }
+  if(adFromLogs>0){
+    h+=`<div class="pnl-section-title">Ad Spend (from Performance Logs)</div>`;
+    logs.filter(l=>parseFloat(l.adspend)>0).forEach(l=>{
+      h+=`<div class="pnl-cost-row">
+        <span class="pnl-cost-cat pnl-cat-adspend">Ad</span>
+        <span class="pnl-cost-desc">${l.notes?esc(l.notes):'Ad spend'}</span>
+        <span class="pnl-cost-date">${l.date||''}</span>
+        <span class="pnl-cost-amt">−${c}${parseFloat(l.adspend).toFixed(2)}</span>
+      </div>`;
+    });
+    h+=`<div style="font-size:.63rem;color:var(--txtmu);margin-top:4px;margin-bottom:6px">Ad entries are managed on the Performance tab.</div>`;
+  }
+  h+=`<div style="margin-top:18px"><button style="padding:8px 14px;border-radius:var(--rs);border:1.5px solid var(--bdr);background:transparent;color:var(--rose);font-family:'Nunito',sans-serif;font-size:.72rem;font-weight:600;cursor:pointer" onclick="${delFn}">Delete Item</button></div></div>`;
+  return h;
+}
+
+async function savePnLCost(itemId){
+  const date=gv('pnl-add-date');
+  const cat=document.getElementById('pnl-add-cat')?document.getElementById('pnl-add-cat').value:'production';
+  const desc=gv('pnl-add-desc');
+  const amt=gv('pnl-add-amt');
+  if(!amt||isNaN(parseFloat(amt))){document.getElementById('pnl-add-amt').focus();return;}
+  const item=findItem();if(!item)return;
+  if(!item.costs)item.costs=[];
+  item.costs.push({id:uid(),date,category:cat,description:desc,amount:parseFloat(amt)});
+  _pnlAddOpen[itemId]=false;
+  renderMain();
+  syncStart();
+  fdb.collection('items').doc(item.id).update({costs:item.costs}).then(syncDone).catch(e=>syncFail('Cost save failed: '+e.message));
+}
+
+async function deletePnLCost(itemId,costId){
+  if(!await showConfirm('Delete this cost entry?','This cannot be undone.','Delete','💸'))return;
+  const item=findItem();if(!item)return;
+  item.costs=(item.costs||[]).filter(c=>c.id!==costId);
+  renderMain();
+  fdb.collection('items').doc(item.id).update({costs:item.costs}).catch(e=>syncFail('Cost delete failed: '+e.message));
+}
+
+function renderKpiPnLSection(){
+  const c=DB.settings&&DB.settings.currency||'$';
+  const studio=calcStudioPnL();
+  const entries=getAllItems();
+  const itemPnLs=entries.map(({item,projTitle,collTitle})=>({item,projTitle,collTitle,pnl:calcItemPnL(item)})).filter(e=>e.pnl.hasData);
+  itemPnLs.sort((a,b)=>b.pnl.gross-a.pnl.gross);
+  const top5=itemPnLs.slice(0,5);
+  const worst5=[...itemPnLs].sort((a,b)=>a.pnl.gross-b.pnl.gross).slice(0,5).filter(e=>e.pnl.gross<0);
+  const recovered=itemPnLs.filter(e=>e.pnl.paybackDate).length;
+  const inProgress=itemPnLs.filter(e=>!e.pnl.paybackDate&&e.pnl.revenue>0&&e.pnl.totalCosts>0).length;
+  const noRevYet=itemPnLs.filter(e=>e.pnl.revenue===0&&e.pnl.totalCosts>0).length;
+  const profCls=studio.gross>=0?'pnl-positive':'pnl-negative';
+  const roiCls=studio.roi!=null?(studio.roi>=0?'pnl-positive':'pnl-negative'):'';
+  let h=`<div class="kpi-sect">
+    <div class="kpi-sect-title">Studio P&amp;L</div>
+    <div class="kpi-cards" style="margin-bottom:14px">
+      <div class="kc kc-sage"><div class="kc-lbl">Total Revenue</div><div class="kc-val">${studio.revenue>0?c+studio.revenue.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</div></div>
+      <div class="kc kc-rose"><div class="kc-lbl">Total Costs</div><div class="kc-val">${studio.totalCosts>0?c+studio.totalCosts.toFixed(2):'—'}</div><div class="kc-sub">${studio.adSpend>0?c+studio.adSpend.toFixed(2)+' ads':''}</div></div>
+      <div class="kc kc-gold"><div class="kc-lbl">Gross Profit</div><div class="kc-val ${profCls}">${studio.hasData?c+studio.gross.toFixed(2):'—'}</div></div>
+      <div class="kc kc-lav"><div class="kc-lbl">Portfolio ROI</div><div class="kc-val ${roiCls}">${studio.roi!=null?studio.roi+'%':'—'}</div></div>
+      <div class="kc" style="border-left-color:var(--sage)"><div class="kc-lbl">Recovered</div><div class="kc-val">${recovered}</div><div class="kc-sub">broke even</div></div>
+      <div class="kc" style="border-left-color:var(--gold)"><div class="kc-lbl">In Payback</div><div class="kc-val">${inProgress}</div><div class="kc-sub">earning toward costs</div></div>
+      <div class="kc" style="border-left-color:var(--rose)"><div class="kc-lbl">Pre-Revenue</div><div class="kc-val">${noRevYet}</div><div class="kc-sub">costs, no sales yet</div></div>
+    </div>`;
+  if(top5.length){
+    h+=`<div style="font-size:.62rem;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--txtmu);margin-bottom:8px">Most Profitable Products</div><div style="display:flex;flex-direction:column;gap:5px;margin-bottom:14px">`;
+    const maxAbs=Math.max(...top5.map(e=>Math.abs(e.pnl.gross)),1);
+    top5.forEach((e,i)=>{
+      const barW=Math.round((Math.abs(e.pnl.gross)/maxAbs)*100);
+      h+=`<div class="kpi-pnl-row" onclick="jumpToItem('${e.item.id}');setTimeout(()=>setTab('pnl'),200)">
+        <div style="font-size:.7rem;font-weight:800;color:var(--txtmu);width:18px;flex-shrink:0">${i+1}</div>
+        <div style="flex:1;min-width:0">
+          <div class="kpi-pnl-name">${esc(e.item.title)}${e.item.edition?' — '+esc(e.item.edition):''}</div>
+          <div class="kpi-pnl-meta">${esc(getPlatName(e.item.platformId))} · ${esc(e.projTitle)}</div>
+          <div style="height:4px;background:var(--bdrl);border-radius:2px;overflow:hidden;margin-top:4px"><div style="height:100%;background:${e.pnl.gross>=0?'var(--sage)':'var(--rose)'};width:${barW}%;border-radius:2px"></div></div>
+        </div>
+        <div style="flex-shrink:0;text-align:right">
+          <div style="font-family:'Playfair Display',serif;font-size:.95rem;${e.pnl.gross>=0?'color:var(--sage)':'color:var(--rose)'}">${c}${e.pnl.gross.toFixed(2)}</div>
+          ${e.pnl.roi!=null?`<div style="font-size:.6rem;color:var(--txtmu)">${e.pnl.roi}% ROI</div>`:''}
+          ${e.pnl.paybackDate?`<div style="font-size:.58rem;color:var(--sage)">✓ recovered</div>`:''}
+        </div>
+      </div>`;
+    });
+    h+=`</div>`;
+  }
+  if(worst5.length){
+    h+=`<div style="font-size:.62rem;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--rose);margin-bottom:8px">Needs Attention (Unrecovered)</div><div style="display:flex;flex-direction:column;gap:5px">`;
+    worst5.forEach(e=>{
+      const remaining=Math.abs(e.pnl.gross);
+      const pct=e.pnl.totalCosts>0?Math.min(100,Math.round((e.pnl.revenue/e.pnl.totalCosts)*100)):0;
+      h+=`<div class="kpi-pnl-row" onclick="jumpToItem('${e.item.id}');setTimeout(()=>setTab('pnl'),200)">
+        <div style="flex:1;min-width:0">
+          <div class="kpi-pnl-name">${esc(e.item.title)}${e.item.edition?' — '+esc(e.item.edition):''}</div>
+          <div class="kpi-pnl-meta">${esc(getPlatName(e.item.platformId))} · ${pct}% recovered</div>
+          <div style="height:4px;background:var(--bdrl);border-radius:2px;overflow:hidden;margin-top:4px"><div style="height:100%;background:var(--rose);width:${pct}%;border-radius:2px"></div></div>
+        </div>
+        <div style="flex-shrink:0;text-align:right">
+          <div style="font-size:.82rem;color:var(--rose);font-weight:700">−${c}${remaining.toFixed(2)}</div>
+          <div style="font-size:.6rem;color:var(--txtmu)">to recover</div>
+        </div>
+      </div>`;
+    });
+    h+='</div>';
+  }
+  if(!itemPnLs.length){
+    h+=`<div style="text-align:center;padding:22px;font-size:.78rem;font-style:italic;color:var(--txtmu)">No P&amp;L data yet — add cost entries to items and log performance to see your studio P&amp;L.</div>`;
+  }
+  const studioExp=DB.settings&&DB.settings.studioExpenses||[];
+  h+=`<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--bdrl)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div style="font-size:.62rem;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--txtmu)">Studio Expenses</div>
+      <button onclick="setTopTab('settings')" style="font-size:.66rem;padding:3px 10px;border-radius:5px;border:1px solid var(--lav-l);background:var(--lav-p);color:var(--lav);cursor:pointer;font-family:inherit">Manage in Settings</button>
+    </div>
+    ${studioExp.length?`<div style="font-size:.73rem;color:var(--txtmu)">Total studio expenses: <strong style="color:var(--txt)">${c}${studioExp.reduce((a,e)=>a+(parseFloat(e.amount)||0),0).toFixed(2)}</strong></div>`:
+    '<div style="font-size:.73rem;color:var(--txtmu);font-style:italic">No studio expenses yet. Add subscriptions and tools in Settings.</div>'}
+  </div></div>`;
+  return h;
+}
+
+let _studioExpAddOpen=false;
+function renderStudioExpSettings(){
+  const exps=DB.settings&&DB.settings.studioExpenses||[];
+  const c=DB.settings&&DB.settings.currency||'$';
+  const total=exps.reduce((a,e)=>a+(parseFloat(e.amount)||0),0);
+  let h=`<div id="sett-studio-exp" style="background:var(--sf);border:1.5px solid var(--bdr);border-radius:var(--r);padding:20px 22px;margin-bottom:16px;box-shadow:var(--sh)">
+    <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--txt);margin-bottom:6px;padding-bottom:10px;border-bottom:1px solid var(--bdrl)">Studio Expenses</div>
+    <div style="font-size:.72rem;color:var(--txtmu);margin-bottom:12px;line-height:1.5">Subscriptions and tools not tied to a specific product — Canva, Publisher Rocket, hosting, etc. These roll into your studio-wide P&amp;L.</div>`;
+  if(total>0)h+=`<div style="font-size:.8rem;font-weight:700;color:var(--txt);margin-bottom:12px">Total logged: <span style="color:var(--rose)">${c}${total.toFixed(2)}</span></div>`;
+  exps.forEach(exp=>{
+    h+=`<div class="pnl-cost-row">
+      <span class="pnl-cost-cat pnl-cat-${exp.category}">${exp.category==='subscription'?'Sub':'Tool'}</span>
+      <span class="pnl-cost-desc">${esc(exp.description||'')}</span>
+      <span class="pnl-cost-date">${exp.date||''}</span>
+      <span class="pnl-cost-amt">−${c}${parseFloat(exp.amount||0).toFixed(2)}</span>
+      <button class="tdel" onclick="deleteStudioExp('${exp.id}')">✕</button>
+    </div>`;
+  });
+  if(_studioExpAddOpen){
+    h+=`<div class="pnl-add-form" style="margin-top:10px">
+      <div class="pnl-add-form-title">Add Studio Expense</div>
+      <div class="g2"><div><label class="mlbl">Date</label><input class="minp" type="date" id="sexp-date" value="${new Date().toISOString().split('T')[0]}"></div>
+      <div><label class="mlbl">Category</label><select class="msel" id="sexp-cat">
+        <option value="subscription">Subscription (monthly/annual)</option>
+        <option value="production">Tool / One-time</option>
+      </select></div></div>
+      <label class="mlbl" style="margin-top:8px">Description</label>
+      <input class="minp" id="sexp-desc" placeholder="e.g. Canva Pro, Publisher Rocket…">
+      <label class="mlbl" style="margin-top:8px">Amount (${c})</label>
+      <input class="minp" type="number" id="sexp-amt" placeholder="0.00" step="0.01" min="0">
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn-cre" onclick="saveStudioExp()">Add Expense</button>
+        <button class="btn-can" onclick="_studioExpAddOpen=false;renderSettings()">Cancel</button>
+      </div></div>`;
+  } else {
+    h+=`<button onclick="_studioExpAddOpen=true;renderSettings()" style="font-size:.72rem;padding:7px 14px;border-radius:var(--rs);border:1.5px dashed var(--lav-l);background:var(--lav-p);color:var(--lav);cursor:pointer;font-family:inherit;margin-top:8px;width:100%">+ Add Studio Expense</button>`;
+  }
+  h+=`</div>`;
+  return h;
+}
+
+async function saveStudioExp(){
+  const date=gv('sexp-date');
+  const cat=document.getElementById('sexp-cat')?document.getElementById('sexp-cat').value:'subscription';
+  const desc=gv('sexp-desc');
+  const amt=gv('sexp-amt');
+  if(!amt||isNaN(parseFloat(amt))){document.getElementById('sexp-amt').focus();return;}
+  if(!DB.settings)DB.settings={};
+  if(!DB.settings.studioExpenses)DB.settings.studioExpenses=[];
+  DB.settings.studioExpenses.push({id:uid(),date,category:cat,description:desc,amount:parseFloat(amt)});
+  _studioExpAddOpen=false;
+  renderSettings();
+  syncStart();
+  fdb.collection('settings').doc('app').set(DB.settings,{merge:true}).then(syncDone).catch(e=>syncFail('Expense save failed: '+e.message));
+}
+
+async function deleteStudioExp(expId){
+  if(!await showConfirm('Delete this expense?','This cannot be undone.','Delete','💸'))return;
+  if(!DB.settings||!DB.settings.studioExpenses)return;
+  DB.settings.studioExpenses=DB.settings.studioExpenses.filter(e=>e.id!==expId);
+  renderSettings();
+  fdb.collection('settings').doc('app').set(DB.settings,{merge:true}).catch(e=>syncFail('Expense delete failed: '+e.message));
+}
 
 function checkOnboarding(){
   const hasProjects=DB.projects.filter(p=>!p._hidden).length>0;
