@@ -378,6 +378,97 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--txt);displ
 .pr-v{font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--txt)}
 .pr-l{font-size:.58rem;color:var(--txtmu);margin-top:1px}
 @keyframes ldpulse{0%,100%{opacity:.4}50%{opacity:1}}
+/* ── MARKETING HUB ── */
+.mkt-wrap{display:flex;flex:1;overflow:hidden}
+.mkt-sidebar{width:220px;min-width:220px;background:var(--sf);border-right:1px solid var(--bdr);display:flex;flex-direction:column;overflow:hidden}
+.mkt-sb-tab{padding:10px 14px;font-size:.72rem;font-weight:700;color:var(--txtmu);cursor:pointer;border-bottom:1px solid var(--bdrl);transition:all .18s;display:flex;align-items:center;gap:8px}
+.mkt-sb-tab:hover{background:var(--lav-p);color:var(--lav)}
+.mkt-sb-tab.ma{background:var(--lav-p);color:var(--lav);border-left:3px solid var(--lav)}
+.mkt-main{flex:1;overflow-y:auto;padding:18px 22px}
+.mkt-main::-webkit-scrollbar{width:4px}
+.mkt-main::-webkit-scrollbar-thumb{background:var(--lav-l);border-radius:4px}
+.mkt-section-title{font-family:'Playfair Display',serif;font-size:1rem;color:var(--txt);margin-bottom:14px}
+.streak-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:9px;margin-bottom:18px}
+.streak-card{background:var(--sf);border:1.5px solid var(--bdr);border-radius:var(--rs);padding:12px 14px;box-shadow:var(--sh)}
+.streak-plat{font-size:.6rem;font-weight:800;letter-spacing:.09em;text-transform:uppercase;margin-bottom:4px}
+.streak-num{font-family:'Playfair Display',serif;font-size:1.6rem;color:var(--txt);line-height:1}
+.streak-lbl{font-size:.6rem;color:var(--txtmu);margin-top:2px}
+.streak-last{font-size:.59rem;color:var(--txtmu);margin-top:3px;font-style:italic}
+.post-row{display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:var(--rs);border:1.5px solid var(--bdrl);background:var(--sf);margin-bottom:5px;box-shadow:0 1px 3px rgba(60,40,120,.04)}
+.post-plat-badge{font-size:.58rem;font-weight:800;padding:2px 7px;border-radius:20px;border:1px solid;text-transform:uppercase;letter-spacing:.06em;flex-shrink:0;white-space:nowrap}
+.post-type{font-size:.65rem;color:var(--txtmu);flex-shrink:0}
+.post-caption{flex:1;font-size:.76rem;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.post-date{font-size:.6rem;color:var(--txtmu);flex-shrink:0}
+.launch-item-row{background:var(--sf);border:1.5px solid var(--bdr);border-radius:var(--rs);margin-bottom:8px;overflow:hidden;box-shadow:var(--sh)}
+.launch-item-hdr{display:flex;align-items:center;gap:9px;padding:11px 14px;cursor:pointer}
+.launch-item-name{font-weight:700;font-size:.85rem;color:var(--txt);flex:1}
+.launch-date-badge{font-size:.62rem;font-weight:700;padding:3px 9px;border-radius:20px}
+.ldb-future{background:var(--lav-p);color:var(--lav);border:1px solid var(--lav-l)}
+.ldb-past{background:var(--sage-p);color:var(--sage);border:1px solid var(--sage-l)}
+.ldb-soon{background:var(--gold-p);color:var(--gold);border:1px solid var(--gold-l)}
+.ldb-today{background:var(--rose);color:#fff;border:1px solid var(--rose)}
+.launch-task-row{display:flex;align-items:flex-start;gap:9px;padding:8px 14px;border-bottom:1px solid var(--bdrl)}
+.launch-task-row:last-child{border-bottom:none}
+.launch-day-badge{font-size:.6rem;font-weight:800;min-width:52px;flex-shrink:0;text-align:right;padding-top:2px}
+.lday-pre{color:var(--lav)}.lday-launch{color:var(--rose);font-size:.68rem}.lday-post{color:var(--sage)}
+.launch-task-text{flex:1;font-size:.77rem;color:var(--txt);line-height:1.4}
+.launch-task-text.lt-done{color:var(--txtmu);text-decoration:line-through}
+.launch-tchk{width:18px;height:18px;min-width:18px;border-radius:4px;border:2px solid var(--lav-l);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:9px;color:transparent;flex-shrink:0;transition:all .18s;margin-top:1px}
+.launch-tchk.lck{background:var(--sage);border-color:var(--sage);color:#fff}
+.launch-countdown{font-size:.68rem;font-weight:700;flex-shrink:0;min-width:48px;text-align:right}
+/* ── GOALS ── */
+.goal-card{background:var(--sf);border:1.5px solid var(--bdr);border-radius:var(--r);padding:16px 18px;margin-bottom:12px;box-shadow:var(--sh)}
+.goal-card-title{font-size:.65rem;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--txtmu);margin-bottom:12px}
+.goal-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.goal-lbl{font-size:.72rem;font-weight:700;color:var(--txtm);min-width:110px;flex-shrink:0}
+.goal-inp{padding:7px 10px;border-radius:var(--rs);border:1.5px solid var(--bdr);background:var(--bg);font-family:'Nunito',sans-serif;font-size:.84rem;color:var(--txt);outline:none;transition:border-color .18s;width:120px}
+.goal-inp:focus{border-color:var(--lav)}
+.goal-bar-wrap{margin-top:8px;margin-bottom:4px}
+.goal-bar-track{height:8px;background:var(--bdrl);border-radius:4px;overflow:hidden;margin-bottom:4px}
+.goal-bar-fill{height:100%;border-radius:4px;transition:width .5s}
+.goal-stats-row{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px}
+.goal-stat{text-align:center}
+.goal-stat-v{font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--txt)}
+.goal-stat-l{font-size:.58rem;color:var(--txtmu);margin-top:1px}
+.goal-forecast{font-size:.72rem;margin-top:8px;padding:7px 10px;border-radius:6px}
+.gf-ahead{background:var(--sage-p);color:var(--sage);border:1px solid var(--sage-l)}
+.gf-behind{background:#fef0f4;color:var(--rose);border:1px solid var(--rose)}
+.gf-on{background:var(--gold-p);color:var(--gold);border:1px solid var(--gold-l)}
+/* ── HEALTH SCORE ── */
+.health-badge{display:inline-flex;align-items:center;gap:3px;font-size:.58rem;font-weight:800;padding:2px 7px;border-radius:20px;border:1px solid}
+.hb-great{background:var(--sage-p);color:var(--sage);border-color:var(--sage-l)}
+.hb-good{background:var(--gold-p);color:var(--gold);border-color:var(--gold-l)}
+.hb-warn{background:#fef0f4;color:var(--rose);border-color:var(--rose)}
+.health-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:9px;margin-bottom:14px}
+.health-row{background:var(--bg);border:1.5px solid var(--bdr);border-radius:var(--rs);padding:10px 13px;cursor:pointer;transition:all .18s}
+.health-row:hover{border-color:var(--lav-l);background:var(--lav-p)}
+.health-row-name{font-size:.78rem;font-weight:700;color:var(--txt);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.health-row-meta{font-size:.61rem;color:var(--txtmu)}
+.health-score-ring{flex-shrink:0}
+/* ── IDEAS ── */
+.idea-row{background:var(--sf);border:1.5px solid var(--bdr);border-radius:var(--rs);padding:12px 14px;margin-bottom:7px;box-shadow:var(--sh);transition:all .18s}
+.idea-row:hover{border-color:var(--lav-l)}
+.idea-row-top{display:flex;align-items:flex-start;gap:9px;margin-bottom:6px}
+.idea-title{font-weight:700;font-size:.86rem;color:var(--txt);flex:1}
+.idea-score-badge{font-size:.65rem;font-weight:800;padding:3px 9px;border-radius:20px;flex-shrink:0}
+.isb-high{background:var(--sage-p);color:var(--sage);border:1px solid var(--sage-l)}
+.isb-med{background:var(--gold-p);color:var(--gold);border:1px solid var(--gold-l)}
+.isb-low{background:var(--lav-p);color:var(--lav);border:1px solid var(--lav-l)}
+.idea-stars{display:flex;gap:3px;align-items:center}
+.istar{font-size:.75rem;cursor:pointer;color:var(--bdrl);transition:color .12s;line-height:1}
+.istar.on{color:var(--gold)}
+.idea-desc{font-size:.72rem;color:var(--txtmu);line-height:1.45;margin-bottom:7px}
+.idea-footer{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.idea-plat-pill{font-size:.58rem;padding:2px 7px;border-radius:20px;background:var(--lav-p);color:var(--lav);border:1px solid var(--lav-l)}
+.idea-promote-btn{margin-left:auto;font-size:.67rem;padding:4px 11px;border-radius:6px;border:1.5px solid var(--sage-l);background:var(--sage-p);color:var(--sage);cursor:pointer;font-family:inherit;font-weight:700;transition:all .14s}
+.idea-promote-btn:hover{background:var(--sage);color:#fff}
+.idea-add-form{background:var(--lav-xp);border:1.5px solid var(--lav-l);border-radius:var(--r);padding:16px;margin-bottom:14px}
+/* ── ROYALTY ── */
+.royalty-row{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:var(--rs);border:1.5px solid var(--bdrl);background:var(--sf);margin-bottom:4px}
+.royalty-expected{font-size:.68rem;color:var(--txtmu);text-decoration:line-through}
+.royalty-actual{font-family:'Playfair Display',serif;font-size:.98rem;font-weight:700}
+.royalty-match{color:var(--sage)}.royalty-under{color:var(--rose)}.royalty-over{color:var(--gold)}
+
 
 .pricing-body{flex:1;overflow-y:auto;padding:14px 22px}
 .pricing-body::-webkit-scrollbar{width:4px}
@@ -518,6 +609,7 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--txt);displ
   <div class="top-tabs">
     <button class="ttab tta" id="ttab-tracker" onclick="setTopTab('tracker')">🗂 Tracker</button>
     <button class="ttab" id="ttab-dashboard" onclick="setTopTab('dashboard')">📊 Dashboard</button>
+    <button class="ttab" id="ttab-marketing" onclick="setTopTab('marketing')">📣 Marketing</button>
     <button class="ttab" id="ttab-settings" onclick="setTopTab('settings')">⚙ Settings</button>
   </div>
   <div class="save-pill" id="savePill">saved ✓</div>
@@ -543,7 +635,8 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--txt);displ
     <div class="main" id="main"><div class="empty"><div class="empty-ico">✦</div><div class="empty-txt">Select or create a project</div></div></div>
   </div>
   <div id="pane-dashboard" class="full-pane" style="display:none"></div>
-  <div id="pane-settings" class="full-pane" style="display:none"></div>
+  <div id="pane-settings" class="full-panel" style="display:none"></div>
+  <div id="pane-marketing" class="full-panel" style="display:none"></div>
 </div>
 <!-- MODALS -->
 <div class="ov" id="ov-proj" style="display:none"><div class="modal">
@@ -1071,12 +1164,13 @@ function showOnboarding(){
 // ── TOP TAB ──
 function setTopTab(tab){
   topTab=tab;
-  ['tracker','dashboard','settings'].forEach(t=>{
+  ['tracker','dashboard','settings','marketing'].forEach(t=>{
     document.getElementById('pane-'+t).style.display=t===tab?(t==='tracker'?'flex':'flex'):'none';
     document.getElementById('ttab-'+t).className='ttab'+(t===tab?' tta':'');
   });
   if(tab==='dashboard'){renderDashboard();}
   if(tab==='settings'){renderSettings();}
+  if(tab==='marketing'){renderMarketing();}
 }
 
 // ── FILTER ──
@@ -1362,10 +1456,10 @@ async function doCreateItem(){
     const ref=await fdb.collection('items').add({
       title:t,edition:edition||'',platformId:platId,templateId:tmplId,icon,
       projectId:pr.id,collectionId:co.id,isStandalone:false,
-      status:'Not Started',progressPct:0,activeStage:0,stages,perf:{logs:[]},notes:[],costs:[],pricing:{},
+      status:'Not Started',progressPct:0,activeStage:0,stages,perf:{logs:[]},notes:[],costs:[],pricing:{},royaltyStatements:[],
       createdAt:firebase.firestore.FieldValue.serverTimestamp()
     });
-    const item={id:ref.id,title:t,edition:edition||'',platformId:platId,templateId:tmplId,icon,activeStage:0,stages,perf:{logs:[]},notes:[],costs:[],pricing:{},projectId:pr.id,collectionId:co.id,isStandalone:false};
+    const item={id:ref.id,title:t,edition:edition||'',platformId:platId,templateId:tmplId,icon,activeStage:0,stages,perf:{logs:[]},notes:[],costs:[],pricing:{},royaltyStatements:[],projectId:pr.id,collectionId:co.id,isStandalone:false};
     co.items.push(item);
     SEL={type:'item',projId:pendingProjId,collId:pendingCollId,itemId:item.id};
     activeStageIdx=0;activeTab='pipeline';renderAll();syncDone();
@@ -1389,10 +1483,10 @@ async function doCreateStandalone(){
     const ref=await fdb.collection('items').add({
       title:t,sub:gv('st-sub'),edition:edition||'',platformId:platId,templateId:tmplId,icon,
       projectId:projNid,collectionId:null,isStandalone:true,
-      status:'Not Started',progressPct:0,activeStage:0,stages,perf:{logs:[]},notes:[],costs:[],pricing:{},
+      status:'Not Started',progressPct:0,activeStage:0,stages,perf:{logs:[]},notes:[],costs:[],pricing:{},royaltyStatements:[],
       createdAt:firebase.firestore.FieldValue.serverTimestamp()
     });
-    const item={id:ref.id,title:t,sub:gv('st-sub'),edition:edition||'',platformId:platId,templateId:tmplId,icon,activeStage:0,stages,perf:{logs:[]},notes:[],costs:[],pricing:{},isStandalone:true,projectId:projNid};
+    const item={id:ref.id,title:t,sub:gv('st-sub'),edition:edition||'',platformId:platId,templateId:tmplId,icon,activeStage:0,stages,perf:{logs:[]},notes:[],costs:[],pricing:{},royaltyStatements:[],isStandalone:true,projectId:projNid};
     if(!DB.standalone)DB.standalone=[];
     DB.standalone.push(item);
     SEL={type:'standalone',projId:null,collId:null,itemId:item.id};activeStageIdx=0;activeTab='pipeline';
@@ -1416,13 +1510,13 @@ async function doCreateDirectItem(){
   try{
     if(collId){
       const co=(pr.collections||[]).find(c=>c.id===collId);if(!co){syncFail('Collection not found');return;}
-      const ref=await fdb.collection('items').add({title:t,edition:edition||'',platformId:platId,templateId:tmplId,icon,projectId:pr.id,collectionId:co.id,isStandalone:false,status:'Not Started',progressPct:0,activeStage:0,stages,perf:{logs:[]},notes:[],costs:[],pricing:{},createdAt:firebase.firestore.FieldValue.serverTimestamp()});
-      const item={id:ref.id,title:t,edition:edition||'',platformId:platId,templateId:tmplId,icon,activeStage:0,stages,perf:{logs:[]},notes:[],costs:[],pricing:{},projectId:pr.id,collectionId:co.id,isStandalone:false};
+      const ref=await fdb.collection('items').add({title:t,edition:edition||'',platformId:platId,templateId:tmplId,icon,projectId:pr.id,collectionId:co.id,isStandalone:false,status:'Not Started',progressPct:0,activeStage:0,stages,perf:{logs:[]},notes:[],costs:[],pricing:{},royaltyStatements:[],createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+      const item={id:ref.id,title:t,edition:edition||'',platformId:platId,templateId:tmplId,icon,activeStage:0,stages,perf:{logs:[]},notes:[],costs:[],pricing:{},royaltyStatements:[],projectId:pr.id,collectionId:co.id,isStandalone:false};
       if(!co.items)co.items=[];co.items.push(item);
       SEL={type:'item',projId,collId,itemId:item.id};
     } else {
-      const ref=await fdb.collection('items').add({title:t,edition:edition||'',platformId:platId,templateId:tmplId,icon,projectId:pr.id,collectionId:null,isStandalone:false,status:'Not Started',progressPct:0,activeStage:0,stages,perf:{logs:[]},notes:[],costs:[],pricing:{},createdAt:firebase.firestore.FieldValue.serverTimestamp()});
-      const item={id:ref.id,title:t,edition:edition||'',platformId:platId,templateId:tmplId,icon,activeStage:0,stages,perf:{logs:[]},notes:[],costs:[],pricing:{},projectId:pr.id,collectionId:null,isStandalone:false};
+      const ref=await fdb.collection('items').add({title:t,edition:edition||'',platformId:platId,templateId:tmplId,icon,projectId:pr.id,collectionId:null,isStandalone:false,status:'Not Started',progressPct:0,activeStage:0,stages,perf:{logs:[]},notes:[],costs:[],pricing:{},royaltyStatements:[],createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+      const item={id:ref.id,title:t,edition:edition||'',platformId:platId,templateId:tmplId,icon,activeStage:0,stages,perf:{logs:[]},notes:[],costs:[],pricing:{},royaltyStatements:[],projectId:pr.id,collectionId:null,isStandalone:false};
       if(!pr.items)pr.items=[];pr.items.push(item);
       SEL={type:'directitem',projId,collId:null,itemId:item.id};
     }
@@ -1743,7 +1837,7 @@ function renderItemView(el,item){
     return `<div class="sp" onclick="setStage(${i})"><div class="sdot ${dc}">${s.completed?'✓':i+1}</div><div class="sname ${nc}">${esc(s.name)}</div></div>`;
   }).join('');
   const delFn=SEL.type==='standalone'?`deleteStandalone('${item.id}')`:SEL.type==='directitem'?`deleteDirectItem('${SEL.projId}','${item.id}')`:`deleteItem('${SEL.projId}','${SEL.collId}','${item.id}')`;
-  const tabs=['pipeline','performance','notes','pnl','pricing'].map(t=>`<button class="vtab${activeTab===t?' va':''}" onclick="setTab('${t}')">${t==='pipeline'?'Pipeline':t==='performance'?'Performance':t==='notes'?'Notes':t==='pnl'?'P&L':'Pricing'}</button>`).join('');
+  const tabs=['pipeline','performance','notes','pnl','pricing','royalty'].map(t=>`<button class="vtab${activeTab===t?' va':''}" onclick="setTab('${t}')">${t==='pipeline'?'Pipeline':t==='performance'?'Performance':t==='notes'?'Notes':t==='pnl'?'P&L':t==='pricing'?'Pricing':'Royalties'}</button>`).join('');
 
   let h=`<div class="proj-hdr"><div class="proj-hdr-top"><div>
     ${breadcrumb}
@@ -1819,6 +1913,8 @@ function renderItemView(el,item){
     h+=renderPnLTab(item,delFn);
   } else if(activeTab==='pricing'){
     h+=renderPricingTab(item,delFn);
+  } else if(activeTab==='royalty'){
+    h+=renderRoyaltyTab(item,delFn);
   }
   el.innerHTML=h;
 }
@@ -2239,6 +2335,9 @@ function renderKPI(wrap){
     </div>
   </div>`;
   h+=renderKpiPnLSection();
+  h+=renderGoalsSection();
+  h+=renderHealthDashboard();
+  h+=renderIdeasSection();
   wrap.innerHTML=h;
 }
 function buildDynamicFilterTabs(){
@@ -2330,6 +2429,7 @@ function renderSettings(){
       <button onclick="exportData()" style="padding:9px 16px;border-radius:var(--rs);border:1.5px solid var(--bdr);background:transparent;color:var(--txtm);font-family:'Nunito',sans-serif;font-size:.78rem;font-weight:700;cursor:pointer">📥 Export All Data (JSON)</button>
       <div style="font-size:.65rem;color:var(--txtmu);margin-top:7px">Downloads a complete backup of all your projects, collections, items, and performance data.</div>
     </div>
+    ${renderTaxExportSettings()}
     ${renderStudioExpSettings()}
   </div>`;
   el.innerHTML=h;
@@ -3193,6 +3293,790 @@ function savePlatCutPct(platId,val){
   window._platCutTimer=setTimeout(()=>savePlatforms(),1200);
 }
 // ── END PRICING SUGGESTOR ──
+
+// ══════════════════════════════════════════════════════════════════
+// FEATURE: MARKETING & LAUNCH HUB
+// ══════════════════════════════════════════════════════════════════
+const SOCIAL_PLATFORMS=[
+  {id:'instagram',name:'Instagram',color:'#e1306c',icon:'📸'},
+  {id:'reels',name:'Reels',color:'#833ab4',icon:'🎬'},
+  {id:'pinterest',name:'Pinterest',color:'#e60023',icon:'📌'},
+  {id:'facebook',name:'Facebook',color:'#1877f2',icon:'👥'},
+  {id:'email',name:'Email',color:'#5a9268',icon:'📧'},
+  {id:'tiktok',name:'TikTok',color:'#010101',icon:'🎵'},
+  {id:'youtube',name:'YouTube',color:'#ff0000',icon:'▶️'},
+];
+const POST_TYPES=['Post','Story','Reel','Pin','Video','Email Blast','Newsletter','Live','Thread'];
+
+const LAUNCH_TEMPLATE=[
+  {offset:-30,text:'Announce product is coming \u2014 tease the topic'},
+  {offset:-21,text:'Share behind-the-scenes creation process'},
+  {offset:-14,text:'Reveal cover / product preview'},
+  {offset:-7,text:'Open pre-order or waitlist'},
+  {offset:-5,text:'Share 1-2 testimonials or beta feedback'},
+  {offset:-3,text:'Countdown post \u2014 3 days left'},
+  {offset:-1,text:'Launch eve post \u2014 goes live tomorrow'},
+  {offset:0,text:'LAUNCH DAY \u2014 all channels fire: post, email blast, pin, reel'},
+  {offset:0,text:'Reply to early comments and questions'},
+  {offset:1,text:'Share any early reviews or buyer reactions'},
+  {offset:3,text:'Reminder post for anyone who missed launch'},
+  {offset:7,text:'Week-1 results share (optional social proof)'},
+  {offset:14,text:'Ask for reviews \u2014 email existing buyers'},
+  {offset:30,text:'Month-1 milestone post / evergreen pin'},
+];
+
+let mktTab='social';
+let _postAddOpen=false;
+let _launchItemExpanded={};
+
+function getSocialPosts(){return(DB.settings&&DB.settings.socialPosts)||[];}
+function getLaunchPlans(){return(DB.settings&&DB.settings.launchPlans)||{};}
+
+function saveSocialData(){
+  if(!DB.settings)DB.settings={};
+  syncStart();
+  fdb.collection('settings').doc('app').set(DB.settings,{merge:true}).then(syncDone).catch(e=>syncFail('Save failed:'+e.message));
+}
+
+function renderMarketing(){
+  const el=document.getElementById('pane-marketing');if(!el)return;
+  let h=`<div class="mkt-wrap">
+    <div class="mkt-sidebar">
+      <div class="mkt-sb-tab${mktTab==='social'?' ma':''}" onclick="setMktTab('social')">📱 Social Posts</div>
+      <div class="mkt-sb-tab${mktTab==='launch'?' ma':''}" onclick="setMktTab('launch')">🚀 Launch Planner</div>
+      <div class="mkt-sb-tab${mktTab==='streaks'?' ma':''}" onclick="setMktTab('streaks')">🔥 Streaks</div>
+    </div>
+    <div class="mkt-main" id="mkt-main-content">`;
+  h+=renderMktContent();
+  h+=`</div></div>`;
+  el.innerHTML=h;
+}
+function setMktTab(t){mktTab=t;const el=document.getElementById('mkt-main-content');if(el)el.innerHTML=renderMktContent();const w=document.querySelector('.mkt-wrap');if(w){w.querySelectorAll('.mkt-sb-tab').forEach((b,i)=>{b.className='mkt-sb-tab'+((['social','launch','streaks'][i]===t)?' ma':'');});}}
+
+function renderMktContent(){
+  if(mktTab==='social')return renderSocialLog();
+  if(mktTab==='launch')return renderLaunchPlanner();
+  if(mktTab==='streaks')return renderStreaks();
+  return '';
+}
+
+function renderSocialLog(){
+  const posts=getSocialPosts().slice().sort((a,b)=>b.date.localeCompare(a.date));
+  const c=DB.settings&&DB.settings.currency||'$';
+  let h=`<div class="mkt-section-title">Social Post Log</div>`;
+  if(_postAddOpen){
+    h+=`<div class="idea-add-form">
+      <div style="font-size:.78rem;font-weight:700;color:var(--lav);margin-bottom:12px">Log a Post</div>
+      <div class="g2"><div><label class="mlbl">Date</label>
+        <input class="minp" type="date" id="post-date" value="${new Date().toISOString().split('T')[0]}">
+      </div><div><label class="mlbl">Platform</label>
+        <select class="msel" id="post-plat">
+          ${SOCIAL_PLATFORMS.map(p=>`<option value="${p.id}">${p.icon} ${p.name}</option>`).join('')}
+        </select>
+      </div></div>
+      <div class="g2" style="margin-top:8px"><div><label class="mlbl">Post Type</label>
+        <select class="msel" id="post-type">${POST_TYPES.map(t=>`<option>${t}</option>`).join('')}</select>
+      </div><div><label class="mlbl">Linked Product</label>
+        <select class="msel" id="post-item">
+          <option value="">— None —</option>
+          ${getAllItems().map(({item,projTitle})=>`<option value="${item.id}">${esc(item.title)}${item.edition?' \u2014 '+esc(item.edition):''}</option>`).join('')}
+        </select>
+      </div></div>
+      <label class="mlbl" style="margin-top:8px">Caption / Notes</label>
+      <input class="minp" id="post-caption" placeholder="What you posted about…">
+      <label class="mlbl" style="margin-top:8px">Link (optional)</label>
+      <input class="minp" id="post-link" placeholder="https://…">
+      <label class="mlbl" style="margin-top:8px">Engagement Notes</label>
+      <input class="minp" id="post-eng" placeholder="Likes, saves, click-through, reactions…">
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn-cre" onclick="savePost()">Log Post</button>
+        <button class="btn-can" onclick="_postAddOpen=false;setMktTab('social')">Cancel</button>
+      </div>
+    </div>`;
+  } else {
+    h+=`<button onclick="_postAddOpen=true;setMktTab('social')" style="font-size:.74rem;padding:8px 16px;border-radius:var(--rs);border:1.5px dashed var(--lav-l);background:var(--lav-p);color:var(--lav);cursor:pointer;font-family:inherit;font-weight:700;margin-bottom:14px">+ Log Post</button>`;
+  }
+  if(!posts.length){
+    h+=`<div style="text-align:center;padding:28px;font-size:.78rem;font-style:italic;color:var(--txtmu)">No posts logged yet. Start tracking your marketing activity above.</div>`;
+    return h;
+  }
+  // Group by month
+  const byMonth={};
+  posts.forEach(p=>{const mo=p.date.substr(0,7);if(!byMonth[mo])byMonth[mo]=[];byMonth[mo].push(p);});
+  Object.entries(byMonth).forEach(([mo,mPosts])=>{
+    const moLabel=new Date(mo+'-02').toLocaleDateString('en-US',{month:'long',year:'numeric'});
+    h+=`<div style="font-size:.62rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--txtmu);margin:12px 0 6px">${moLabel} \u00b7 ${mPosts.length} posts</div>`;
+    mPosts.forEach(post=>{
+      const sp=SOCIAL_PLATFORMS.find(p=>p.id===post.platform)||{name:post.platform,color:'var(--lav)',icon:'📱'};
+      h+=`<div class="post-row">
+        <span class="post-plat-badge" style="color:${sp.color};border-color:${sp.color}33;background:${sp.color}11">${sp.icon} ${sp.name}</span>
+        <span class="post-type">${post.postType||''}</span>
+        <span class="post-caption">${esc(post.caption||'')}</span>
+        ${post.engagementNotes?`<span style="font-size:.63rem;color:var(--sage);flex-shrink:0">${esc(post.engagementNotes)}</span>`:''}
+        <span class="post-date">${post.date}</span>
+        <button class="tdel" onclick="deletePost('${post.id}')">✕</button>
+      </div>`;
+    });
+  });
+  return h;
+}
+
+function savePost(){
+  const date=gv('post-date');const platId=document.getElementById('post-plat').value;
+  const postType=document.getElementById('post-type').value;
+  const itemId=document.getElementById('post-item').value;
+  const caption=gv('post-caption');const link=gv('post-link');const engagementNotes=gv('post-eng');
+  if(!DB.settings)DB.settings={};
+  if(!DB.settings.socialPosts)DB.settings.socialPosts=[];
+  DB.settings.socialPosts.push({id:uid(),date,platform:platId,postType,itemId:itemId||null,caption,link,engagementNotes,createdAt:Date.now()});
+  _postAddOpen=false;saveSocialData();setMktTab('social');
+}
+async function deletePost(postId){
+  if(!await showConfirm('Delete this post log?','','Delete','📱'))return;
+  if(!DB.settings||!DB.settings.socialPosts)return;
+  DB.settings.socialPosts=DB.settings.socialPosts.filter(p=>p.id!==postId);
+  saveSocialData();setMktTab('social');
+}
+
+function renderStreaks(){
+  const posts=getSocialPosts();
+  const today=new Date().toISOString().split('T')[0];
+  let h=`<div class="mkt-section-title">Posting Streaks</div><div class="streak-grid">`;
+  SOCIAL_PLATFORMS.forEach(sp=>{
+    const platPosts=posts.filter(p=>p.platform===sp.id).sort((a,b)=>b.date.localeCompare(a.date));
+    let streak=0;
+    if(platPosts.length){
+      // count consecutive weeks with at least one post
+      const weekSet=new Set(platPosts.map(p=>{const d=new Date(p.date);const wk=new Date(d);wk.setDate(d.getDate()-d.getDay());return wk.toISOString().split('T')[0];}));
+      const weeks=[...weekSet].sort().reverse();
+      const msPerWeek=7*24*60*60*1000;
+      let prev=null;streak=0;
+      for(const wk of weeks){
+        if(!prev){streak=1;}else{const diff=(new Date(prev)-new Date(wk))/msPerWeek;if(diff<=1.5)streak++;else break;}
+        prev=wk;
+      }
+    }
+    const lastPost=platPosts[0];
+    const daysSinceLast=lastPost?Math.floor((Date.now()-new Date(lastPost.date))/864e5):null;
+    const streakColor=streak>=4?'var(--sage)':streak>=2?'var(--gold)':'var(--rose)';
+    h+=`<div class="streak-card">
+      <div class="streak-plat" style="color:${sp.color}">${sp.icon} ${sp.name}</div>
+      <div class="streak-num" style="color:${streakColor}">${streak}</div>
+      <div class="streak-lbl">week${streak===1?'':'s'} streak</div>
+      <div class="streak-last">${lastPost?'Last: '+lastPost.date:'No posts yet'}</div>
+      ${daysSinceLast!==null&&daysSinceLast>7?`<div style="font-size:.58rem;color:var(--rose);margin-top:2px">⚠ ${daysSinceLast}d since last post</div>`:''}
+    </div>`;
+  });
+  h+=`</div>`;
+  // Post frequency chart — last 8 weeks
+  const now=new Date();const weeks=[];
+  for(let i=7;i>=0;i--){const d=new Date(now);d.setDate(d.getDate()-i*7);const wk=d.toISOString().split('T')[0].substr(0,7);weeks.push(wk);}
+  const wkCounts={};posts.forEach(p=>{const wk=p.date.substr(0,7);wkCounts[wk]=(wkCounts[wk]||0)+1;});
+  const maxC=Math.max(...weeks.map(w=>wkCounts[w]||0),1);
+  h+=`<div style="margin-top:4px"><div style="font-size:.62rem;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--txtmu);margin-bottom:10px">Monthly Post Volume</div>
+    <div class="bar-chart" style="height:80px">${weeks.map(w=>{const cnt=wkCounts[w]||0;const pct=Math.round((cnt/maxC)*100);return`<div class="bar-col"><div class="bar-val">${cnt||''}</div><div class="bar-fill" style="height:${Math.max(pct,2)}px;background:var(--lav)"></div><div class="bar-lbl">${w.substr(5)}</div></div>`;}).join('')}</div>
+  </div>`;
+  return h;
+}
+
+function renderLaunchPlanner(){
+  const plans=getLaunchPlans();
+  const items=getAllItems();
+  let h=`<div class="mkt-section-title">Launch Planner</div>`;
+  h+=`<div style="font-size:.72rem;color:var(--txtmu);margin-bottom:14px;line-height:1.5">Set a launch date on any product to auto-generate a 60-day marketing countdown. Tasks are pre-filled with proven launch sequencing and can be checked off as you go.</div>`;
+
+  // Items with launch dates
+  const itemsWithDates=items.filter(({item})=>item.launchDate);
+  // Items without
+  const itemsWithout=items.filter(({item})=>!item.launchDate).slice(0,20);
+
+  if(!itemsWithDates.length){
+    h+=`<div style="background:var(--lav-p);border:1.5px solid var(--lav-l);border-radius:var(--rs);padding:13px 16px;margin-bottom:16px;font-size:.74rem;color:var(--lav)">No launch dates set yet. Go to an item and set a launch date on its Pipeline tab, or set one below.</div>`;
+  }
+
+  [...itemsWithDates,...itemsWithout.slice(0,5)].forEach(({item,projTitle})=>{
+    const today=new Date().toISOString().split('T')[0];
+    const ld=item.launchDate;
+    const daysTo=ld?Math.ceil((new Date(ld)-new Date(today))/(864e5)):null;
+    const launched=daysTo!==null&&daysTo<0;
+    const plan=plans[item.id]||{tasks:[]};
+    const tasks=plan.tasks&&plan.tasks.length?plan.tasks:LAUNCH_TEMPLATE.map(t=>({...t,id:uid(),done:false,doneAt:null}));
+    const done=tasks.filter(t=>t.done).length;
+    const isOpen=_launchItemExpanded[item.id];
+    let ldBadge='';
+    if(ld){
+      if(daysTo===0)ldBadge='<span class="launch-date-badge ldb-today">🚀 LAUNCH TODAY</span>';
+      else if(daysTo>0&&daysTo<=7)ldBadge=`<span class="launch-date-badge ldb-soon">⚡ ${daysTo}d to launch</span>`;
+      else if(daysTo>0)ldBadge=`<span class="launch-date-badge ldb-future">${esc(ld)} · ${daysTo}d away</span>`;
+      else ldBadge=`<span class="launch-date-badge ldb-past">Launched ${esc(ld)}</span>`;
+    } else {
+      ldBadge=`<span style="font-size:.63rem;color:var(--txtmu)">No launch date — <span style="cursor:pointer;color:var(--lav);text-decoration:underline" onclick="promptSetLaunchDate('${item.id}')">set one</span></span>`;
+    }
+    h+=`<div class="launch-item-row">
+      <div class="launch-item-hdr" onclick="toggleLaunchItem('${item.id}')">
+        <div style="flex:1;min-width:0">
+          <div class="launch-item-name">${esc(item.title)}${item.edition?' \u2014 '+esc(item.edition):''}</div>
+          <div style="font-size:.6rem;color:var(--txtmu);margin-top:2px">${esc(projTitle)} · ${done}/${tasks.length} tasks done</div>
+        </div>
+        ${ldBadge}
+        <span style="font-size:.65rem;color:var(--txtmu);margin-left:8px;transition:transform .2s;${isOpen?'transform:rotate(180deg)':''}">▾</span>
+      </div>`;
+    if(isOpen){
+      h+=`<div style="border-top:1px solid var(--bdrl)">`;
+      // Set/change launch date
+      h+=`<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg);border-bottom:1px solid var(--bdrl)">
+        <span style="font-size:.68rem;font-weight:700;color:var(--txtm)">Launch Date:</span>
+        <input type="date" class="minp" style="width:160px;font-size:.78rem" value="${ld||''}" onchange="setItemLaunchDate('${item.id}',this.value)">
+        ${ld?`<button onclick="clearItemLaunchDate('${item.id}')" style="font-size:.65rem;padding:3px 9px;border-radius:5px;border:1px solid var(--bdr);background:transparent;color:var(--txtmu);cursor:pointer">Clear</button>`:''}
+      </div>`;
+      tasks.forEach((task,ti)=>{
+        const offsetLabel=task.offset===0?'Launch Day':task.offset>0?'+'+task.offset+'d':task.offset+'d';
+        const offsetCls=task.offset===0?'lday-launch':task.offset>0?'lday-post':'lday-pre';
+        // compute actual date if launch date set
+        let taskDate='';
+        if(ld){const d=new Date(ld);d.setDate(d.getDate()+task.offset);taskDate=d.toISOString().split('T')[0];}
+        const isPast=taskDate&&taskDate<new Date().toISOString().split('T')[0];
+        h+=`<div class="launch-task-row" style="${task.done?'opacity:.65':''}">
+          <div class="launch-tchk${task.done?' lck':''}" onclick="toggleLaunchTask('${item.id}',${ti})">✓</div>
+          <div class="launch-task-text${task.done?' lt-done':''}">${esc(task.text)}</div>
+          <span class="launch-day-badge ${offsetCls}">${offsetLabel}</span>
+          ${taskDate?`<span class="launch-countdown" style="color:${isPast&&!task.done?'var(--rose)':'var(--txtmu)'}">${taskDate}</span>`:''}
+        </div>`;
+      });
+      h+=`</div>`;
+    }
+    h+=`</div>`;
+  });
+  return h;
+}
+
+function toggleLaunchItem(itemId){
+  _launchItemExpanded[itemId]=!_launchItemExpanded[itemId];
+  setMktTab('launch');
+}
+
+function setItemLaunchDate(itemId,date){
+  const allItems=getAllItems();const entry=allItems.find(e=>e.item.id===itemId);if(!entry)return;
+  entry.item.launchDate=date;
+  // Init plan if needed
+  if(!DB.settings)DB.settings={};
+  if(!DB.settings.launchPlans)DB.settings.launchPlans={};
+  if(!DB.settings.launchPlans[itemId]||!DB.settings.launchPlans[itemId].tasks||!DB.settings.launchPlans[itemId].tasks.length){
+    DB.settings.launchPlans[itemId]={tasks:LAUNCH_TEMPLATE.map(t=>({...t,id:uid(),done:false,doneAt:null}))};
+  }
+  syncStart();
+  const batch=fdb.batch();
+  batch.update(fdb.collection('items').doc(itemId),{launchDate:date});
+  batch.set(fdb.collection('settings').doc('app'),DB.settings,{merge:true});
+  batch.commit().then(syncDone).catch(e=>syncFail('Launch date save failed:'+e.message));
+  setMktTab('launch');
+}
+function clearItemLaunchDate(itemId){
+  const allItems=getAllItems();const entry=allItems.find(e=>e.item.id===itemId);
+  if(entry)entry.item.launchDate=null;
+  fdb.collection('items').doc(itemId).update({launchDate:null}).catch(()=>{});
+  setMktTab('launch');
+}
+function promptSetLaunchDate(itemId){
+  _launchItemExpanded[itemId]=true;setMktTab('launch');
+}
+function toggleLaunchTask(itemId,taskIdx){
+  if(!DB.settings)DB.settings={};
+  if(!DB.settings.launchPlans)DB.settings.launchPlans={};
+  if(!DB.settings.launchPlans[itemId]){
+    DB.settings.launchPlans[itemId]={tasks:LAUNCH_TEMPLATE.map(t=>({...t,id:uid(),done:false,doneAt:null}))};
+  }
+  const task=DB.settings.launchPlans[itemId].tasks[taskIdx];
+  if(!task)return;
+  task.done=!task.done;task.doneAt=task.done?Date.now():null;
+  saveSocialData();setMktTab('launch');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// FEATURE: GOALS & FORECASTING
+// ══════════════════════════════════════════════════════════════════
+function getGoals(){return(DB.settings&&DB.settings.goals)||{studioAnnual:0,studioMonthly:0,platforms:{}};}
+function saveGoals(){
+  if(!DB.settings)DB.settings={};
+  saveSocialData();
+}
+function setGoal(key,subKey,value){
+  if(!DB.settings)DB.settings={};
+  if(!DB.settings.goals)DB.settings.goals={studioAnnual:0,studioMonthly:0,platforms:{}};
+  if(subKey){if(!DB.settings.goals[key])DB.settings.goals[key]={};DB.settings.goals[key][subKey]=parseFloat(value)||0;}
+  else{DB.settings.goals[key]=parseFloat(value)||0;}
+  clearTimeout(window._goalTimer);
+  window._goalTimer=setTimeout(()=>saveGoals(),900);
+}
+
+function getMonthlyRevTrend(){
+  const items=getAllItems();
+  const monthMap={};
+  items.forEach(({item})=>{
+    const logs=(item.perf&&item.perf.logs)||[];
+    logs.forEach(l=>{if(l.date){const mo=l.date.substr(0,7);if(!monthMap[mo])monthMap[mo]=0;monthMap[mo]+=parseFloat(l.rev)||0;}});
+  });
+  const months=Object.keys(monthMap).sort();
+  if(months.length<2)return null;
+  const last3=months.slice(-3).map(m=>monthMap[m]);
+  const avg=last3.reduce((a,v)=>a+v,0)/last3.length;
+  return avg;
+}
+
+function renderGoalsSection(){
+  const goals=getGoals();const c=DB.settings&&DB.settings.currency||'$';
+  const studio=calcStudioPnL();
+  const currentYear=new Date().getFullYear();
+  const currentMonth=new Date().getMonth()+1;
+  const monthStr=currentYear+'-'+String(currentMonth).padStart(2,'0');
+  // YTD revenue
+  const items=getAllItems();
+  let ytdRev=0,mtdRev=0;
+  items.forEach(({item})=>{
+    const logs=(item.perf&&item.perf.logs)||[];
+    logs.forEach(l=>{
+      if(l.date&&l.date.startsWith(String(currentYear)))ytdRev+=parseFloat(l.rev)||0;
+      if(l.date&&l.date.startsWith(monthStr))mtdRev+=parseFloat(l.rev)||0;
+    });
+  });
+  const monthTrend=getMonthlyRevTrend()||0;
+  const monthsLeft=12-currentMonth;
+  const forecast=ytdRev+monthTrend*monthsLeft;
+
+  let h=`<div class="kpi-sect">
+    <div class="kpi-sect-title">Goals &amp; Revenue Forecast</div>`;
+
+  // Studio-wide goal
+  const annualGoal=parseFloat(goals.studioAnnual)||0;
+  const monthlyGoal=parseFloat(goals.studioMonthly)||0;
+  h+=`<div class="goal-card">
+    <div class="goal-card-title">Studio-Wide Goals</div>
+    <div class="goal-row">
+      <span class="goal-lbl">Annual Target (${currentYear})</span>
+      <span style="font-size:.73rem;color:var(--txtmu);margin-right:4px">${c}</span>
+      <input class="goal-inp" type="number" min="0" step="100" placeholder="e.g. 12000" value="${goals.studioAnnual||''}" oninput="setGoal('studioAnnual',null,this.value)">
+    </div>
+    ${annualGoal>0?renderGoalBar(ytdRev,annualGoal,forecast,c,'Annual'):'' }
+    <div class="goal-row" style="margin-top:8px">
+      <span class="goal-lbl">Monthly Target</span>
+      <span style="font-size:.73rem;color:var(--txtmu);margin-right:4px">${c}</span>
+      <input class="goal-inp" type="number" min="0" step="50" placeholder="e.g. 1000" value="${goals.studioMonthly||''}" oninput="setGoal('studioMonthly',null,this.value)">
+    </div>
+    ${monthlyGoal>0?renderGoalBar(mtdRev,monthlyGoal,null,c,'Monthly'):''}
+    ${monthTrend>0?`<div style="font-size:.69rem;color:var(--txtmu);margin-top:8px">Avg monthly revenue (last 3 months): <strong style="color:var(--txt)">${c}${monthTrend.toFixed(2)}</strong> · YTD: <strong>${c}${ytdRev.toFixed(2)}</strong></div>`:''}
+  </div>`;
+
+  // Per-platform goals
+  const plats=getPlatforms();
+  h+=`<div class="goal-card">
+    <div class="goal-card-title">Per-Platform Goals</div>`;
+  plats.forEach(p=>{
+    const platGoal=parseFloat((goals.platforms&&goals.platforms[p.id])||0);
+    // Platform YTD
+    let platYtd=0;
+    items.forEach(({item})=>{
+      if(item.platformId!==p.id)return;
+      const logs=(item.perf&&item.perf.logs)||[];
+      logs.forEach(l=>{if(l.date&&l.date.startsWith(String(currentYear)))platYtd+=parseFloat(l.rev)||0;});
+    });
+    h+=`<div class="goal-row">
+      <span class="goal-lbl" style="color:${p.color}">${p.icon} ${esc(p.name)}</span>
+      <span style="font-size:.73rem;color:var(--txtmu);margin-right:4px">${c}</span>
+      <input class="goal-inp" type="number" min="0" step="100" placeholder="Annual target" value="${(goals.platforms&&goals.platforms[p.id])||''}" oninput="setGoal('platforms','${p.id}',this.value)">
+      ${platGoal>0?`<span style="font-size:.72rem;font-weight:700;color:${platYtd>=platGoal?'var(--sage)':'var(--txtmu)'}">${c}${platYtd.toFixed(0)} / ${c}${platGoal.toFixed(0)}</span>`:''}
+    </div>`;
+    if(platGoal>0)h+=renderGoalBar(platYtd,platGoal,null,c,'');
+  });
+  h+=`</div>`;
+
+  // Forecast card
+  if(monthTrend>0&&annualGoal>0){
+    const onTrack=forecast>=annualGoal;const close=Math.abs(forecast-annualGoal)/annualGoal<0.1;
+    h+=`<div class="goal-forecast ${onTrack?'gf-ahead':close?'gf-on':'gf-behind'}">
+      ${onTrack?'🟢':close?'🟡':'🔴'} ${onTrack?'On track to exceed goal':close?'Close to goal':'Behind goal'} \u2014 
+      Forecasted ${currentYear} revenue: <strong>${c}${forecast.toFixed(2)}</strong> 
+      (${onTrack?'+':''}${c}${(forecast-annualGoal).toFixed(2)} vs ${c}${annualGoal.toFixed(2)} target)
+    </div>`;
+  }
+  h+=`</div>`;
+  return h;
+}
+
+function renderGoalBar(current,goal,forecast,c,label){
+  const pct=Math.min(100,Math.round((current/goal)*100));
+  const fcastPct=forecast?Math.min(100,Math.round((forecast/goal)*100)):null;
+  const color=pct>=100?'var(--sage)':pct>=70?'var(--gold)':'var(--lav)';
+  return`<div class="goal-bar-wrap">
+    <div style="display:flex;justify-content:space-between;font-size:.62rem;color:var(--txtmu);margin-bottom:4px">
+      <span>${label} progress: ${pct}%</span><span>${c}${current.toFixed(2)} / ${c}${goal.toFixed(2)}</span>
+    </div>
+    <div class="goal-bar-track">
+      <div class="goal-bar-fill" style="width:${pct}%;background:${color}"></div>
+    </div>
+    ${fcastPct&&fcastPct!==pct?`<div style="font-size:.62rem;color:var(--txtmu);margin-top:3px">Forecast: ${c}${forecast.toFixed(2)} (${fcastPct}% of goal)</div>`:''}
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// FEATURE: PRODUCT HEALTH SCORE
+// ══════════════════════════════════════════════════════════════════
+function calcHealthScore(item){
+  let score=0;const reasons=[];const warnings=[];
+  // 1. Pipeline progress (0-30)
+  const pct=itemPct(item);
+  score+=Math.round(pct*0.30);
+  if(pct===100)reasons.push('Pipeline complete');
+  else if(pct>50)reasons.push(pct+'% through pipeline');
+  else warnings.push('Pipeline only '+pct+'% done');
+
+  // 2. Activity recency (0-25)
+  const last=lastActivityDate(item);const days=last?daysSince(last):999;
+  if(days<=3){score+=25;reasons.push('Active recently');}
+  else if(days<=7){score+=20;reasons.push('Active this week');}
+  else if(days<=14){score+=12;warnings.push(days+'d since last activity');}
+  else if(days<=30){score+=5;warnings.push(days+'d idle');}
+  else{warnings.push('Stuck — '+days+'d no activity');}
+
+  // 3. Performance data (0-25)
+  const logs=(item.perf&&item.perf.logs)||[];
+  if(logs.length>=3){score+=25;reasons.push('Regular perf logging');}
+  else if(logs.length>=1){score+=15;reasons.push(logs.length+' perf entr'+  (logs.length===1?'y':'ies'));}
+  else warnings.push('No performance data');
+  // Recency of last log
+  if(logs.length){const lastLog=logs[logs.length-1];const logDays=lastLog.date?Math.floor((Date.now()-new Date(lastLog.date))/864e5):999;if(logDays>60)warnings.push('No perf log in '+logDays+'d');}
+
+  // 4. Revenue (0-20)
+  const pnl=calcItemPnL(item);
+  if(pnl.revenue>0&&pnl.gross>0){score+=20;reasons.push('Profitable');}
+  else if(pnl.revenue>0){score+=10;reasons.push('Revenue earned');}
+  else if(pct===100)warnings.push('Complete but no revenue logged');
+
+  // Cap at 100
+  score=Math.min(100,score);
+  const grade=score>=80?'great':score>=55?'good':'warn';
+  return{score,grade,reasons,warnings};
+}
+
+function healthBadge(item){
+  const {score,grade}=calcHealthScore(item);
+  const label=grade==='great'?'Healthy':grade==='good'?'OK':'Needs Attention';
+  return`<span class="health-badge hb-${grade}">${score} ${label}</span>`;
+}
+
+function renderHealthDashboard(){
+  const entries=getAllItems();
+  const scored=entries.map(e=>({...e,health:calcHealthScore(e.item)}));
+  scored.sort((a,b)=>a.health.score-b.health.score);// worst first
+  const c=DB.settings&&DB.settings.currency||'$';
+  const avgScore=scored.length?Math.round(scored.reduce((a,e)=>a+e.health.score,0)/scored.length):0;
+  const great=scored.filter(e=>e.health.grade==='great').length;
+  const good=scored.filter(e=>e.health.grade==='good').length;
+  const warn=scored.filter(e=>e.health.grade==='warn').length;
+
+  let h=`<div class="kpi-sect">
+    <div class="kpi-sect-title">Product Health Scores</div>
+    <div class="kpi-cards" style="margin-bottom:14px">
+      <div class="kc kc-lav"><div class="kc-lbl">Portfolio Avg</div><div class="kc-val">${avgScore}</div><div class="kc-sub">out of 100</div></div>
+      <div class="kc kc-sage"><div class="kc-lbl">Healthy</div><div class="kc-val">${great}</div><div class="kc-sub">score 80+</div></div>
+      <div class="kc kc-gold"><div class="kc-lbl">OK</div><div class="kc-val">${good}</div><div class="kc-sub">score 55–79</div></div>
+      <div class="kc kc-rose"><div class="kc-lbl">Needs Attention</div><div class="kc-val">${warn}</div><div class="kc-sub">score &lt;55</div></div>
+    </div>
+    <div style="font-size:.62rem;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--txtmu);margin-bottom:8px">All Products (lowest score first)</div>
+    <div class="health-grid">`;
+  scored.forEach(({item,projTitle,health})=>{
+    const platColor=getPlatColor(item.platformId);
+    h+=`<div class="health-row" onclick="jumpToItem('${item.id}')">
+      <div style="display:flex;align-items:center;gap:9px;margin-bottom:5px">
+        ${ring(health.score,36,3,health.grade==='great'?'var(--sage)':health.grade==='good'?'var(--gold)':'var(--rose)','var(--bdrl)')}
+        <div style="flex:1;min-width:0">
+          <div class="health-row-name">${esc(item.title)}${item.edition?' \u2014 '+esc(item.edition):''}</div>
+          <div class="health-row-meta">${esc(projTitle)}</div>
+        </div>
+        <div style="font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;color:${health.grade==='great'?'var(--sage)':health.grade==='good'?'var(--gold)':'var(--rose)'}">${health.score}</div>
+      </div>
+      ${health.warnings.length?`<div style="font-size:.6rem;color:var(--rose);line-height:1.4">${health.warnings.slice(0,2).map(w=>'⚠ '+esc(w)).join(' · ')}</div>`:''}
+      ${health.reasons.length&&!health.warnings.length?`<div style="font-size:.6rem;color:var(--sage);line-height:1.4">${health.reasons.slice(0,2).map(r=>'✓ '+esc(r)).join(' · ')}</div>`:''}
+    </div>`;
+  });
+  if(!scored.length)h+=`<div style="grid-column:1/-1;text-align:center;padding:18px;font-size:.78rem;font-style:italic;color:var(--txtmu)">No products yet. Create items to see health scores.</div>`;
+  h+=`</div></div>`;
+  return h;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// FEATURE: IDEA PARKING LOT
+// ══════════════════════════════════════════════════════════════════
+let _ideaAddOpen=false;
+
+function getIdeas(){return DB.ideas||[];}
+
+async function loadIdeas(){
+  try{
+    const snap=await fdb.collection('ideas').orderBy('createdAt','desc').get();
+    DB.ideas=snap.docs.map(doc=>({id:doc.id,...doc.data()}));
+  }catch(e){DB.ideas=[];}
+}
+
+function renderIdeasSection(){
+  const ideas=getIdeas();
+  const c=DB.settings&&DB.settings.currency||'$';
+  let h=`<div class="kpi-sect">
+    <div class="kpi-sect-title" style="display:flex;align-items:center;justify-content:space-between">
+      <span>Idea Parking Lot</span>
+      <button onclick="toggleIdeaForm()" style="font-size:.68rem;padding:4px 12px;border-radius:var(--rs);border:1.5px dashed var(--gold-l);background:var(--gold-p);color:var(--gold);cursor:pointer;font-family:inherit;font-weight:700">+ New Idea</button>
+    </div>
+    <div style="font-size:.72rem;color:var(--txtmu);margin-bottom:12px;line-height:1.5">Capture product ideas before they're ready to build. Score each on demand, effort, and revenue potential \u2014 then promote the best ones to real projects.</div>`;
+
+  if(_ideaAddOpen){
+    h+=`<div class="idea-add-form">
+      <div style="font-size:.78rem;font-weight:700;color:var(--lav);margin-bottom:12px">New Idea</div>
+      <label class="mlbl">Idea Title</label>
+      <input class="minp" id="idea-title" placeholder="e.g. Gratitude journal for teens, SVG monogram bundle…">
+      <label class="mlbl" style="margin-top:8px">Description / Angle</label>
+      <textarea class="minp" id="idea-desc" rows="2" style="resize:vertical" placeholder="What makes it unique? Who's it for?"></textarea>
+      <div class="g2" style="margin-top:8px">
+        <div><label class="mlbl">Platform</label>
+          <select class="msel" id="idea-plat">
+            <option value="">— TBD —</option>
+            ${getPlatforms().map(p=>`<option value="${p.id}">${p.icon} ${esc(p.name)}</option>`).join('')}
+          </select>
+        </div>
+        <div><label class="mlbl">Est. Price (${c})</label>
+          <input class="minp" type="number" id="idea-price" placeholder="e.g. 4.99" step="0.01" min="0">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:12px">
+        ${['demand','effort','revenue'].map(dim=>`<div>
+          <div style="font-size:.62rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--txtmu);margin-bottom:6px">${dim==='demand'?'Market Demand':dim==='effort'?'Effort (low=good)':'Revenue Potential'}</div>
+          <div style="display:flex;gap:3px">${[1,2,3,4,5].map(n=>`<div class="istar" id="idea-${dim}-${n}" onclick="setIdeaStar('${dim}',${n})">★</div>`).join('')}</div>
+        </div>`).join('')}
+      </div>
+      <div style="display:flex;gap:8px;margin-top:14px">
+        <button class="btn-cre" onclick="saveIdea()">Save Idea</button>
+        <button class="btn-can" onclick="toggleIdeaForm()">Cancel</button>
+      </div>
+    </div>`;
+  }
+
+  if(!ideas.length&&!_ideaAddOpen){
+    h+=`<div style="text-align:center;padding:22px;font-size:.78rem;font-style:italic;color:var(--txtmu)">Your idea parking lot is empty. Hit \"+ New Idea\" to capture one.</div>`;
+  }
+
+  // Sort by viability score desc
+  const sorted=[...ideas].sort((a,b)=>viabilityScore(b)-viabilityScore(a));
+  sorted.forEach(idea=>{
+    const vs=viabilityScore(idea);
+    const plat=idea.platformId?getPlatform(idea.platformId):null;
+    const badge=vs>=13?'isb-high':vs>=9?'isb-med':'isb-low';
+    const label=vs>=13?'High Potential':vs>=9?'Medium':'Early Stage';
+    h+=`<div class="idea-row">
+      <div class="idea-row-top">
+        <div style="flex:1;min-width:0">
+          <div class="idea-title">${esc(idea.title)}</div>
+          <div style="display:flex;gap:8px;margin-top:3px;flex-wrap:wrap">
+            ${renderStars(idea.demand,'D')} ${renderStars(idea.revenue,'R')} ${renderStars(6-idea.effort,'E')}
+          </div>
+        </div>
+        <span class="idea-score-badge ${badge}">${vs}/15 · ${label}</span>
+      </div>
+      ${idea.description?`<div class="idea-desc">${esc(idea.description)}</div>`:''}
+      <div class="idea-footer">
+        ${plat?`<span class="idea-plat-pill">${plat.icon} ${esc(plat.name)}</span>`:''}
+        ${idea.estimatedPrice?`<span style="font-size:.65rem;color:var(--txtmu)">Est. ${c}${parseFloat(idea.estimatedPrice).toFixed(2)}</span>`:''}
+        <span style="font-size:.6rem;color:var(--txtmu)">${idea.createdAt?new Date(idea.createdAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'}):''}</span>
+        <button class="idea-promote-btn" onclick="promoteIdeaToProject('${idea.id}')">🚀 Promote to Project</button>
+        <button class="tdel" style="margin-left:4px" onclick="deleteIdea('${idea.id}')">✕</button>
+      </div>
+    </div>`;
+  });
+  h+=`</div>`;
+  return h;
+}
+
+function renderStars(count,lbl){
+  const c=Math.round(count)||0;
+  return`<span style="font-size:.65rem;color:var(--txtmu)">${lbl}:${'★'.repeat(Math.max(0,c))}${'☆'.repeat(Math.max(0,5-c))}</span>`;
+}
+
+function viabilityScore(idea){
+  const d=parseInt(idea.demand)||0;const e=parseInt(idea.effort)||3;const r=parseInt(idea.revenue)||0;
+  return d+(6-e)+r;// effort is inverted — lower effort = higher score
+}
+
+let _ideaStars={demand:0,effort:3,revenue:0};
+function toggleIdeaForm(){_ideaAddOpen=!_ideaAddOpen;_ideaStars={demand:0,effort:3,revenue:0};renderDashboard();}
+function setIdeaStar(dim,n){
+  _ideaStars[dim]=n;
+  // Update star visuals inline
+  for(let i=1;i<=5;i++){const el=document.getElementById(`idea-${dim}-${i}`);if(el)el.className='istar'+(i<=n?' on':'');}
+}
+
+async function saveIdea(){
+  const title=gv('idea-title');if(!title){document.getElementById('idea-title').focus();return;}
+  const desc=gv('idea-desc');
+  const platId=document.getElementById('idea-plat').value;
+  const price=gv('idea-price');
+  const idea={id:uid(),title,description:desc,platformId:platId||null,estimatedPrice:parseFloat(price)||null,demand:_ideaStars.demand,effort:_ideaStars.effort,revenue:_ideaStars.revenue,status:'idea',createdAt:Date.now()};
+  if(!DB.ideas)DB.ideas=[];DB.ideas.push(idea);
+  _ideaAddOpen=false;_ideaStars={demand:0,effort:3,revenue:0};
+  syncStart();
+  fdb.collection('ideas').doc(idea.id).set(idea).then(syncDone).catch(e=>syncFail('Idea save failed:'+e.message));
+  renderDashboard();
+}
+
+async function deleteIdea(ideaId){
+  if(!await showConfirm('Delete this idea?','It will be permanently removed.','Delete','💡'))return;
+  DB.ideas=(DB.ideas||[]).filter(i=>i.id!==ideaId);
+  fdb.collection('ideas').doc(ideaId).delete().catch(()=>{});
+  renderDashboard();
+}
+
+async function promoteIdeaToProject(ideaId){
+  const idea=getIdeas().find(i=>i.id===ideaId);if(!idea)return;
+  if(!await showConfirm('Promote to Project?',`"${idea.title}" will become a new project in your Tracker.`,'Promote','🚀'))return;
+  syncStart();
+  const ref=await fdb.collection('projects').add({title:idea.title,desc:idea.description||'',collapsed:true,notes:[],createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+  const p={id:ref.id,title:idea.title,desc:idea.description||'',collapsed:true,collections:[],items:[],notes:[]};
+  DB.projects.push(p);
+  // Archive the idea
+  DB.ideas=(DB.ideas||[]).filter(i=>i.id!==ideaId);
+  fdb.collection('ideas').doc(ideaId).delete().catch(()=>{});
+  syncDone();
+  showToast(`"${idea.title}" promoted to project!`);
+  setTopTab('tracker');SEL={type:'proj',projId:p.id,collId:null,itemId:null};renderAll();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// FEATURE: TAX PREP EXPORT
+// ══════════════════════════════════════════════════════════════════
+function renderTaxExportSettings(){
+  const currentYear=new Date().getFullYear();
+  const years=[currentYear,currentYear-1,currentYear-2];
+  return`<div style="background:var(--sf);border:1.5px solid var(--bdr);border-radius:var(--r);padding:20px 22px;margin-bottom:16px;box-shadow:var(--sh)">
+    <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--txt);margin-bottom:6px;padding-bottom:10px;border-bottom:1px solid var(--bdrl)">Tax Prep Export</div>
+    <div style="font-size:.72rem;color:var(--txtmu);margin-bottom:14px;line-height:1.5">Generates a clean CSV summary of revenue, ad spend, production costs, platform fees, and subscriptions — organized by year and category for your accountant.</div>
+    <div style="display:flex;gap:9px;flex-wrap:wrap">
+      ${years.map(y=>`<button onclick="exportTaxCSV(${y})" style="padding:9px 16px;border-radius:var(--rs);border:1.5px solid var(--bdr);background:var(--bg);color:var(--txtm);font-family:'Nunito',sans-serif;font-size:.78rem;font-weight:700;cursor:pointer;transition:all .18s" onmouseover="this.style.borderColor='var(--lav)';this.style.background='var(--lav-p)'" onmouseout="this.style.borderColor='var(--bdr)';this.style.background='var(--bg)'">📥 Export ${y}</button>`).join('')}
+    </div>
+  </div>`;
+}
+
+function exportTaxCSV(year){
+  const c=DB.settings&&DB.settings.currency||'$';
+  const items=getAllItems();
+  const rows=[['Year','Category','Platform','Product','Date','Description','Amount','Type']];
+  const yearStr=String(year);
+
+  items.forEach(({item,projTitle})=>{
+    const platName=getPlatName(item.platformId)||'Unknown';
+    const productLabel=item.title+(item.edition?' \u2014 '+item.edition:'');
+    // Revenue from perf logs
+    const logs=(item.perf&&item.perf.logs)||[];
+    logs.forEach(l=>{
+      if(!l.date||!l.date.startsWith(yearStr))return;
+      if(parseFloat(l.rev)>0)rows.push([year,'Revenue',platName,productLabel,l.date,'Period Revenue',parseFloat(l.rev).toFixed(2),'Income']);
+      if(parseFloat(l.adspend)>0)rows.push([year,'Ad Spend',platName,productLabel,l.date,l.notes||'Ad spend',parseFloat(l.adspend).toFixed(2),'Expense']);
+    });
+    // Production costs
+    (item.costs||[]).forEach(cost=>{
+      if(!cost.date||!cost.date.startsWith(yearStr))return;
+      rows.push([year,cost.category==='fee'?'Platform Fee':cost.category==='subscription'?'Subscription':'Production Cost',platName,productLabel,cost.date,cost.description||cost.category,parseFloat(cost.amount||0).toFixed(2),'Expense']);
+    });
+  });
+  // Studio expenses
+  (DB.settings&&DB.settings.studioExpenses||[]).forEach(exp=>{
+    if(!exp.date||!exp.date.startsWith(yearStr))return;
+    rows.push([year,exp.category==='subscription'?'Subscription':'Tool/Software','Studio-wide','—',exp.date,exp.description||'Studio expense',parseFloat(exp.amount||0).toFixed(2),'Expense']);
+  });
+
+  // Summary rows
+  const income=rows.filter(r=>r[7]==='Income').reduce((a,r)=>a+parseFloat(r[6]),0);
+  const expenses=rows.filter(r=>r[7]==='Expense').reduce((a,r)=>a+parseFloat(r[6]),0);
+  rows.push([],[`${year} SUMMARY`],[`Total Revenue`,income.toFixed(2)],[`Total Expenses`,expenses.toFixed(2)],[`Net Profit`,( income-expenses).toFixed(2)]);
+
+  const csv=rows.map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`studio-tracker-tax-${year}.csv`;a.click();
+  showToast(`Tax export for ${year} downloaded.`);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// FEATURE: ROYALTY STATEMENT LOG (item tab — 6th tab)
+// ══════════════════════════════════════════════════════════════════
+let _royaltyAddOpen={};
+function renderRoyaltyTab(item,delFn){
+  const c=DB.settings&&DB.settings.currency||'$';
+  const stmts=(item.royaltyStatements||[]).slice().sort((a,b)=>b.date.localeCompare(a.date));
+  const totalActual=stmts.reduce((a,s)=>a+(parseFloat(s.actual)||0),0);
+  const totalExpected=stmts.reduce((a,s)=>a+(parseFloat(s.expected)||0),0);
+  const diff=totalActual-totalExpected;
+  let h=`<div class="pnl-body">`;
+  if(stmts.length){
+    h+=`<div class="pnl-summary">
+      <div class="pnl-card pnl-card-rev"><div class="pnl-card-lbl">Total Received</div><div class="pnl-card-val">${c}${totalActual.toFixed(2)}</div><div class="pnl-card-sub">${stmts.length} statement${stmts.length===1?'':'s'}</div></div>
+      <div class="pnl-card pnl-card-cost"><div class="pnl-card-lbl">Total Expected</div><div class="pnl-card-val">${c}${totalExpected.toFixed(2)}</div></div>
+      <div class="pnl-card ${diff>=0?'pnl-card-profit':'pnl-card-cost'}"><div class="pnl-card-lbl">Variance</div><div class="pnl-card-val ${diff>=0?'pnl-positive':'pnl-negative'}">${diff>=0?'+':''}${c}${diff.toFixed(2)}</div><div class="pnl-card-sub">${Math.abs(diff)<0.50?'Matching':'Reconcile'}</div></div>
+    </div>`;
+  }
+  h+=`<div class="pnl-section-title">Royalty Statements</div>`;
+  if(_royaltyAddOpen[item.id]){
+    h+=`<div class="pnl-add-form">
+      <div class="pnl-add-form-title">Log Royalty Statement</div>
+      <div class="g2"><div><label class="mlbl">Date Received</label><input class="minp" type="date" id="roy-date" value="${new Date().toISOString().split('T')[0]}"></div>
+      <div><label class="mlbl">Period</label><input class="minp" id="roy-period" placeholder="e.g. Jan 2024"></div></div>
+      <div class="g2" style="margin-top:8px">
+        <div><label class="mlbl">Amount Received (${c})</label><input class="minp" type="number" id="roy-actual" placeholder="0.00" step="0.01" min="0"></div>
+        <div><label class="mlbl">Expected (${c})</label><input class="minp" type="number" id="roy-expected" placeholder="0.00" step="0.01" min="0"></div>
+      </div>
+      <label class="mlbl" style="margin-top:8px">Notes</label>
+      <input class="minp" id="roy-notes" placeholder="Late payment, adjustment, promo impact…">
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn-cre" onclick="saveRoyaltyStatement('${item.id}')">Save Statement</button>
+        <button class="btn-can" onclick="_royaltyAddOpen['${item.id}']=false;setTab('royalty')">Cancel</button>
+      </div>
+    </div>`;
+  } else {
+    h+=`<button onclick="_royaltyAddOpen['${item.id}']=true;setTab('royalty')" style="font-size:.72rem;padding:7px 14px;border-radius:var(--rs);border:1.5px dashed var(--lav-l);background:var(--lav-p);color:var(--lav);cursor:pointer;font-family:inherit;margin-bottom:10px">+ Log Statement</button>`;
+  }
+  stmts.forEach(s=>{
+    const diff=parseFloat(s.actual||0)-parseFloat(s.expected||0);
+    const matchCls=Math.abs(diff)<0.01?'royalty-match':diff<0?'royalty-under':'royalty-over';
+    h+=`<div class="royalty-row">
+      <span style="font-size:.6rem;color:var(--txtmu);flex-shrink:0">${s.date}</span>
+      <span style="font-size:.72rem;flex-shrink:0;color:var(--txtmu)">${esc(s.period||'')}</span>
+      <span class="royalty-actual ${matchCls}">${c}${parseFloat(s.actual||0).toFixed(2)}</span>
+      ${s.expected?`<span class="royalty-expected">${c}${parseFloat(s.expected).toFixed(2)}</span>`:''}
+      ${Math.abs(diff)>0.01?`<span style="font-size:.68rem;font-weight:700;${diff<0?'color:var(--rose)':'color:var(--gold)'}">${diff>0?'+':''}${c}${diff.toFixed(2)}</span>`:'<span style="font-size:.62rem;color:var(--sage)">✓</span>'}
+      <span style="flex:1;font-size:.63rem;color:var(--txtmu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(s.notes||'')}</span>
+      <button class="tdel" onclick="deleteRoyaltyStatement('${item.id}','${s.id}')">✕</button>
+    </div>`;
+  });
+  if(!stmts.length&&!_royaltyAddOpen[item.id]){
+    h+=`<div style="font-size:.75rem;color:var(--txtmu);font-style:italic;padding:6px 0">No royalty statements logged yet. Track what you've actually received vs what was expected.</div>`;
+  }
+  h+=`<div style="margin-top:18px"><button style="padding:8px 14px;border-radius:var(--rs);border:1.5px solid var(--bdr);background:transparent;color:var(--rose);font-family:'Nunito',sans-serif;font-size:.72rem;font-weight:600;cursor:pointer" onclick="${delFn}">Delete Item</button></div></div>`;
+  return h;
+}
+
+async function saveRoyaltyStatement(itemId){
+  const date=gv('roy-date');const period=gv('roy-period');
+  const actual=gv('roy-actual');const expected=gv('roy-expected');const notes=gv('roy-notes');
+  if(!actual){document.getElementById('roy-actual').focus();return;}
+  const item=findItem();if(!item)return;
+  if(!item.royaltyStatements)item.royaltyStatements=[];
+  item.royaltyStatements.push({id:uid(),date,period,actual:parseFloat(actual)||0,expected:parseFloat(expected)||0,notes});
+  _royaltyAddOpen[itemId]=false;renderMain();
+  syncStart();
+  fdb.collection('items').doc(item.id).update({royaltyStatements:item.royaltyStatements}).then(syncDone).catch(e=>syncFail('Royalty save failed:'+e.message));
+}
+async function deleteRoyaltyStatement(itemId,stmtId){
+  if(!await showConfirm('Delete this statement?','','Delete','📋'))return;
+  const item=findItem();if(!item)return;
+  item.royaltyStatements=(item.royaltyStatements||[]).filter(s=>s.id!==stmtId);
+  renderMain();
+  fdb.collection('items').doc(item.id).update({royaltyStatements:item.royaltyStatements}).catch(()=>{});
+}
 
 function checkOnboarding(){
   const hasProjects=DB.projects.filter(p=>!p._hidden).length>0;
