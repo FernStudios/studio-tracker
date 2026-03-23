@@ -1674,33 +1674,64 @@ function renderTree(){
   // Ideas section in sidebar
   if(showIdeasInSidebar){
     const ideas=getIdeas();
+    const platOpts=getPlatforms().map(p=>'<option value="'+p.id+'">'+p.icon+' '+esc(p.name)+'</option>').join('');
     h+='<div class="standalone-sect" style="border-top-color:var(--gold-l)">';
-    h+='<div style="display:flex;align-items:center;justify-content:space-between;padding:0 4px 5px">';
+    h+='<div style="display:flex;align-items:center;justify-content:space-between;padding:0 4px 6px">';
     h+='<span class="standalone-lbl" style="color:var(--gold)">💡 Ideas ('+ideas.length+')</span>';
-    h+='<button onclick="event.stopPropagation();_ideaAddOpen=true;renderIdeasInline()" style="font-size:.6rem;padding:2px 7px;border-radius:5px;border:1px solid var(--gold-l);background:var(--gold-p);color:var(--gold);cursor:pointer;font-family:inherit">+ Add</button>';
+    if(_ideaAddOpen){
+      h+='<button onclick="_ideaAddOpen=false;renderTree()" style="font-size:.6rem;padding:2px 7px;border-radius:5px;border:1px solid var(--bdr);background:transparent;color:var(--txtmu);cursor:pointer">✕ Cancel</button>';
+    } else {
+      h+='<button onclick="_ideaAddOpen=true;renderTree()" style="font-size:.6rem;padding:2px 7px;border-radius:5px;border:1px solid var(--gold-l);background:var(--gold-p);color:var(--gold);cursor:pointer;font-family:inherit">+ Add</button>';
+    }
     h+='</div>';
-    h+='<div id="ideas-inline-list">';
-    if(!ideas.length){
-      h+='<div style="padding:6px 8px;font-size:.72rem;color:var(--txtmu);font-style:italic">No ideas yet — capture one!</div>';
+    // Inline add form
+    if(_ideaAddOpen){
+      h+='<div style="background:var(--gold-xp,#fdf9f2);border:1.5px solid var(--gold-l);border-radius:var(--rs);padding:11px;margin-bottom:8px">';
+      h+='<input class="minp" id="idea-title" placeholder="Idea title…" style="margin-bottom:7px;font-size:.79rem">';
+      h+='<textarea class="minp" id="idea-desc" rows="2" style="resize:none;font-size:.75rem;margin-bottom:7px" placeholder="What makes it unique?"></textarea>';
+      h+='<select class="msel" id="idea-plat" style="margin-bottom:7px;font-size:.75rem"><option value="">— Platform TBD —</option>'+platOpts+'</select>';
+      h+='<div style="display:flex;gap:8px;margin-bottom:7px">';
+      h+='<input class="minp" type="number" id="idea-price" placeholder="Est. price" step="0.01" min="0" style="flex:1;font-size:.75rem">';
+      h+='</div>';
+      // Star ratings
+      h+='<div style="display:flex;flex-direction:column;gap:5px;margin-bottom:9px">';
+      ['demand','effort','revenue'].forEach(dim=>{
+        const lbl=dim==='demand'?'Demand':dim==='effort'?'Effort ↓':'Revenue';
+        h+='<div style="display:flex;align-items:center;gap:6px">';
+        h+='<span style="font-size:.62rem;font-weight:700;color:var(--txtmu);min-width:48px">'+lbl+'</span>';
+        for(let n=1;n<=5;n++){
+          const filled=_ideaStars[dim]>=n;
+          h+='<span class="istar'+(filled?' on':'')+'" id="idea-'+dim+'-'+n+'" onclick="setIdeaStar(\''+dim+'\','+n+')" style="cursor:pointer;font-size:1rem;color:'+(filled?'var(--gold)':'var(--bdrl)')+'">★</span>';
+        }
+        h+='</div>';
+      });
+      h+='</div>';
+      h+='<div style="display:flex;gap:6px">';
+      h+='<button class="btn-cre" onclick="saveIdeaFromSidebar()" style="flex:1;font-size:.74rem;padding:7px">Save Idea</button>';
+      h+='</div></div>';
+    }
+    // Ideas list
+    if(!ideas.length&&!_ideaAddOpen){
+      h+='<div style="padding:4px 8px 8px;font-size:.72rem;color:var(--txtmu);font-style:italic">No ideas yet — tap + Add to capture one.</div>';
     } else {
       const sorted=[...ideas].sort((a,b)=>viabilityScore(b)-viabilityScore(a));
       sorted.forEach(idea=>{
         const vs=viabilityScore(idea);
         const vc=vs>=13?'var(--sage)':vs>=9?'var(--gold)':'var(--rose)';
         const plat=idea.platformId?getPlatform(idea.platformId):null;
-        h+='<div class="st-row" style="flex-direction:column;align-items:flex-start;gap:4px;cursor:default">';
-        h+='<div style="display:flex;align-items:center;gap:6px;width:100%">';
-        h+='<span style="font-size:.78rem;color:var(--txt);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(idea.title)+'</span>';
+        h+='<div style="padding:8px 6px;border-bottom:1px solid var(--bdrl)">';
+        h+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">';
+        h+='<span style="font-size:.76rem;color:var(--txt);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600">'+esc(idea.title)+'</span>';
         h+='<span style="font-size:.6rem;font-weight:800;color:'+vc+'">'+vs+'/15</span>';
         h+='</div>';
-        h+='<div style="display:flex;gap:5px;align-items:center;width:100%">';
-        if(plat)h+='<span style="font-size:.55rem;padding:1px 5px;border-radius:8px;background:'+plat.color+'18;color:'+plat.color+'">'+plat.icon+' '+esc(plat.name)+'</span>';
-        h+='<button data-ideaid="'+idea.id+'" onclick="promoteIdeaToProject(this.dataset.ideaid)" style="font-size:.58rem;padding:2px 7px;border-radius:5px;border:1px solid var(--lav-l);background:var(--lav-p);color:var(--lav);cursor:pointer;font-family:inherit;margin-left:auto">🚀 Promote</button>';
-        h+='<button data-ideaid="'+idea.id+'" onclick="deleteIdea(this.dataset.ideaid)" style="font-size:.58rem;padding:2px 5px;border-radius:5px;border:1px solid var(--bdr);background:transparent;color:var(--txtmu);cursor:pointer">✕</button>';
+        h+='<div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">';
+        if(plat)h+='<span style="font-size:.57rem;padding:1px 6px;border-radius:8px;background:'+plat.color+'18;color:'+plat.color+';border:1px solid '+plat.color+'33">'+plat.icon+' '+esc(plat.name)+'</span>';
+        h+='<button data-ideaid="'+idea.id+'" onclick="promoteIdeaToProject(this.dataset.ideaid)" style="font-size:.6rem;padding:2px 8px;border-radius:5px;border:1px solid var(--lav-l);background:var(--lav-p);color:var(--lav);cursor:pointer;font-family:inherit;margin-left:auto">🚀 Promote</button>';
+        h+='<button data-ideaid="'+idea.id+'" onclick="deleteIdea(this.dataset.ideaid)" style="font-size:.6rem;padding:2px 6px;border-radius:5px;border:1px solid var(--bdr);background:transparent;color:var(--txtmu);cursor:pointer">✕</button>';
         h+='</div></div>';
       });
     }
-    h+='</div></div>';
+    h+='</div>';
   }
   el.innerHTML=h||'<div style="padding:16px 8px;text-align:center;font-size:.74rem;font-style:italic;color:var(--txtmu)">No projects yet — create one above</div>';
 }
@@ -2267,7 +2298,8 @@ function saveEditItem(itemId){
 function renderDashboard(){
   const el=document.getElementById('pane-dashboard');if(!el)return;
   el.innerHTML='';
-  const wrap=document.createElement('div');wrap.className='kpi-wrap';
+  const wrap=document.createElement('div');
+  wrap.style.cssText='display:flex;flex-direction:column;flex:1;overflow:hidden;height:100%';
   el.appendChild(wrap);
   renderKPI(wrap);
 }
@@ -2307,6 +2339,7 @@ function jumpToItem(itemId){
 }
 
 function renderKPI(wrap){
+
   const entries=getItemsForScope();
   let totalRev=0,totalUnits=0,totalAdSpend=0,totalAdRev=0,latestCRev=0,latestCUnits=0;
   const monthMap={};
@@ -2335,7 +2368,10 @@ function renderKPI(wrap){
 
   const projOptions=DB.projects.filter(p=>!p._hidden).map(p=>`<option value="${p.id}"${p.id===kpiProjId?' selected':''}>${esc(p.title)}</option>`).join('');
 
-  let h=`<div class="kpi-hdr">
+  // ── Header (sticky, not scrolled) ──
+  const hdrEl=document.createElement('div');
+  hdrEl.className='kpi-hdr';
+  hdrEl.innerHTML=`<div class="kpi-hdr">
     <div><div class="kpi-hdr-title">KPI Dashboard</div><div class="kpi-hdr-sub">${entries.length} item${entries.length===1?'':'s'} · ${kpiScope==='proj'&&kpiProjId?(DB.projects.find(p=>p.id===kpiProjId)||{title:'Project'}).title:'All Projects'}</div></div>
     <div>
       <div class="kpi-scope-tabs">
@@ -2343,9 +2379,15 @@ function renderKPI(wrap){
         <button class="kst${kpiScope==='proj'?' kst-p':''}" onclick="setKpiScope('proj',document.getElementById('kpi-psel').value)">By Project</button>
       </div>
       ${kpiScope==='proj'?`<select id="kpi-psel" class="kpi-proj-sel" onchange="setKpiScope('proj',this.value)">${projOptions}</select>`:`<select id="kpi-psel" class="kpi-proj-sel" style="display:none">${projOptions}</select>`}
-    </div>
-  </div>
-  <div class="kpi-body">
+    </div>`;
+  wrap.appendChild(hdrEl);
+
+  // ── Body (all sections, scrollable) ──
+  const bodyEl=document.createElement('div');
+  bodyEl.className='kpi-body';
+
+  // Core sections
+  let h=`
     <div class="kpi-sect"><div class="kpi-sect-title">Revenue</div><div class="kpi-cards">
       <div class="kc kc-sage"><div class="kc-lbl">Cumul. Revenue</div><div class="kc-val">${latestCRev>0?c+latestCRev.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</div></div>
       <div class="kc kc-lav"><div class="kc-lbl">Period Revenue</div><div class="kc-val">${totalRev>0?c+totalRev.toFixed(2):'—'}</div></div>
@@ -2377,16 +2419,15 @@ function renderKPI(wrap){
     <div class="kpi-sect"><div class="kpi-sect-title">Top Performing Products (by Revenue)</div>
       <div class="top-list">
         ${ranked.filter(e=>e.crev>0).length?ranked.filter(e=>e.crev>0).map((e,i)=>{const color=getPlatColor(e.item.platformId);return`<div class="top-item" onclick="jumpToItem('${e.item.id}')"><div class="top-rank">${i+1}</div><div class="top-info"><div class="top-name">${esc(e.item.title)}${e.item.edition?' — '+esc(e.item.edition):''}</div><div class="top-meta">${esc(getPlatName(e.item.platformId))}${e.collTitle?' · '+esc(e.collTitle):''} · ${esc(e.projTitle)}</div></div><div class="top-val">$${e.crev.toFixed(2)}</div></div>`;}).join(''):
-        '<div style="text-align:center;padding:18px;font-size:.78rem;font-style:italic;color:var(--txtmu)">No revenue logged yet — add performance entries to items to see rankings</div>'}
-      </div>
-    </div>
-  </div>`;
+        '<div style="text-align:center;padding:18px;font-size:.78rem;font-style:italic;color:var(--txtmu)">No revenue logged yet — add performance entries to items to see rankings</div>'}`;
+  // Appended sections (P&L, Goals, Health) — all inside kpi-body
   h+=renderKpiPnLSection();
   h+=renderGoalsSection();
   h+=renderHealthDashboard();
-  h+='</div></div>';
-  wrap.innerHTML=h;
+  bodyEl.innerHTML=h;
+  wrap.appendChild(bodyEl);
 }
+
 function buildDynamicFilterTabs(){
   // Rebuild filter tabs based on available platforms
   const tabRow=document.querySelector('.ftabs');if(!tabRow)return;
@@ -4186,6 +4227,23 @@ async function deleteRoyaltyStatement(itemId,stmtId){
   fdb.collection('items').doc(item.id).update({royaltyStatements:item.royaltyStatements}).catch(()=>{});
 }
 
+
+function saveIdeaFromSidebar(){
+  const titleEl=document.getElementById('idea-title');
+  const title=titleEl?titleEl.value.trim():'';
+  if(!title){if(titleEl)titleEl.focus();return;}
+  const desc=document.getElementById('idea-desc')?document.getElementById('idea-desc').value.trim():'';
+  const platId=document.getElementById('idea-plat')?document.getElementById('idea-plat').value:'';
+  const price=document.getElementById('idea-price')?document.getElementById('idea-price').value:'';
+  const idea={id:uid(),title,description:desc,platformId:platId||null,estimatedPrice:parseFloat(price)||null,demand:_ideaStars.demand,effort:_ideaStars.effort,revenue:_ideaStars.revenue,status:'idea',createdAt:Date.now()};
+  if(!DB.ideas)DB.ideas=[];
+  DB.ideas.push(idea);
+  _ideaAddOpen=false;_ideaStars={demand:0,effort:3,revenue:0};
+  syncStart();
+  fdb.collection('ideas').doc(idea.id).set(idea).then(syncDone).catch(e=>syncFail('Idea save failed:'+e.message));
+  renderTree();
+  showToast('Idea saved!');
+}
 function checkOnboarding(){
   const hasProjects=DB.projects.filter(p=>!p._hidden).length>0;
   if(!hasProjects){showOnboarding();}
