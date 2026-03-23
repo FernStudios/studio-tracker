@@ -49,6 +49,14 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--txt);displ
 .tree::-webkit-scrollbar-thumb{background:var(--lav-l);border-radius:3px}
 .p-row{display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:var(--rs);cursor:pointer;margin-bottom:2px;border:1.5px solid transparent;transition:all .18s}
 .p-row-hold{opacity:.55;border:1.5px dashed var(--gold-l)!important;background:var(--gold-xp,#fdf9f2)!important}
+
+.hold-pill{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;border:1.5px solid;font-family:'Nunito',sans-serif;font-size:.63rem;font-weight:800;cursor:pointer;letter-spacing:.03em;transition:all .18s;flex-shrink:0}
+.hold-pill-off{border-color:var(--gold-l);background:var(--gold-p);color:var(--gold)}
+.hold-pill-off:hover{background:var(--gold);color:#fff}
+.hold-pill-on{border-color:var(--sage-l);background:var(--sage-p);color:var(--sage)}
+.hold-pill-on:hover{background:var(--sage);color:#fff}
+.hold-dim{opacity:.5}
+
 .hold-badge{font-size:.52rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);background:var(--gold-p);border:1px solid var(--gold-l);padding:1px 6px;border-radius:10px;flex-shrink:0}
 .p-row:hover{background:var(--s2)}
 .p-row.pa{background:var(--gold-p);border-color:var(--gold-l)}
@@ -1810,7 +1818,10 @@ function renderProjDash(el,pr){
       <input id="proj-desc-inp-${pr.id}" class="minp" style="font-size:.82rem" value="${esc(pr.desc||'')}" placeholder="Add description…" onkeydown="if(event.key==='Enter')saveEditProjDesc('${pr.id}');if(event.key==='Escape')cancelEditProjDesc()">
       <div style="display:flex;gap:6px;margin-top:5px"><button onclick="saveEditProjDesc('${pr.id}')" class="btn-create" style="padding:6px 12px;font-size:.75rem">Save</button><button onclick="cancelEditProjDesc()" class="btn-cancel" style="padding:6px 12px;font-size:.75rem">Cancel</button></div>
     </div>
-  </div><div class="ring-wrap">${ring(pct,60,5,'#7c6ab5','#ddd0e8')}<div class="ring-pct">${pct}%</div></div></div>
+  </div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0">
+    <div class="ring-wrap">${ring(pct,60,5,'#7c6ab5','#ddd0e8')}<div class="ring-pct">${pct}%</div></div>
+    <button class="hold-pill ${pr.onHold?'hold-pill-on':'hold-pill-off'}" onclick="toggleProjectHold('${pr.id}')">${pr.onHold?'▶ Resume':'⏸ On Hold'}</button>
+  </div></div>
   <div class="dash-stats">
     <div class="ds"><div class="ds-v">${allItems.length}</div><div class="ds-l">Items</div></div>
     <div class="ds"><div class="ds-v">${complete}</div><div class="ds-l">Complete</div></div>
@@ -1848,8 +1859,7 @@ function renderProjDash(el,pr){
   const projPerf=rollupPerf(allItems);
   h+=`</div>${renderPerfRollup(projPerf,'var(--gold)')}`;
   h+=renderNotesSection('proj',pr.id,pr.notes||[]);
-  h+=`<div style="margin-top:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-    <button style="padding:8px 14px;border-radius:var(--rs);border:1.5px solid ${pr.onHold?'var(--sage)':'var(--gold-l)'};background:${pr.onHold?'var(--sage-p)':'var(--gold-p)'};color:${pr.onHold?'var(--sage)':'var(--gold)'};font-family:'Nunito',sans-serif;font-size:.72rem;font-weight:700;cursor:pointer" onclick="toggleProjectHold('${pr.id}')">${pr.onHold?'▶ Resume Project':'⏸ Put On Hold'}</button>
+  h+=`<div style="margin-top:14px">
     <button style="padding:8px 14px;border-radius:var(--rs);border:1.5px solid var(--bdr);background:transparent;color:var(--rose);font-family:'Nunito',sans-serif;font-size:.72rem;font-weight:600;cursor:pointer" onclick="deleteProj('${pr.id}')">Delete Project</button>
   </div></div>`;
   el.innerHTML=h;
@@ -1876,7 +1886,10 @@ function renderCollDash(el,pr,co){
       <input id="coll-desc-inp-${co.id}" class="minp" style="font-size:.82rem" value="${esc(co.desc||'')}" placeholder="Add description…" onkeydown="if(event.key==='Enter')saveEditCollDesc('${pr.id}','${co.id}');if(event.key==='Escape')cancelEditCollDesc()">
       <div style="display:flex;gap:6px;margin-top:5px"><button onclick="saveEditCollDesc('${pr.id}','${co.id}')" class="btn-create" style="padding:6px 12px;font-size:.75rem">Save</button><button onclick="cancelEditCollDesc()" class="btn-cancel" style="padding:6px 12px;font-size:.75rem">Cancel</button></div>
     </div>
-  </div><div class="ring-wrap">${ring(cpct,60,5,'#7c6ab5','#ddd0e8')}<div class="ring-pct">${cpct}%</div></div></div>
+  </div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0">
+    <div class="ring-wrap">${ring(cpct,60,5,'#7c6ab5','#ddd0e8')}<div class="ring-pct">${cpct}%</div></div>
+    <button class="hold-pill ${co.onHold?'hold-pill-on':'hold-pill-off'}" onclick="toggleCollHold('${pr.id}','${co.id}')">${co.onHold?'▶ Resume':'⏸ On Hold'}</button>
+  </div></div>
   <div class="dash-stats">
     <div class="ds"><div class="ds-v">${items.length}</div><div class="ds-l">Items</div></div>
     <div class="ds"><div class="ds-v">${complete}</div><div class="ds-l">Complete</div></div>
@@ -1928,6 +1941,7 @@ function renderItemView(el,item){
     <div class="pb-row">
       <span class="pb" style="background:${platColor}18;color:${platColor};border-color:${platColor}44">${platIcon} ${esc(platName)}</span>
       ${item.edition?`<span class="pb" style="background:var(--lav-p);color:var(--lav);border-color:var(--lav-l)">${esc(item.edition)}</span>`:''}
+      <button class="hold-pill ${item.onHold?'hold-pill-on':'hold-pill-off'}" onclick="toggleItemHold('${item.id}')">${item.onHold?'▶ Resume':'⏸ On Hold'}</button>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <div class="proj-title" id="item-title-d-${item.id}">${esc(item.title)}</div>
@@ -2652,7 +2666,28 @@ function renderSettTmplInlineEditor(platId,tmpl,isBuiltin){
   let h=`<div style="background:var(--lav-xp,#f6f4fd);border:1.5px solid var(--lav-l);border-radius:var(--rs);padding:14px;margin:6px 0 8px">
     <div style="font-size:.78rem;font-weight:700;color:var(--lav);margin-bottom:10px">${tmpl&&tmpl.id!=='__new__'?(isBuiltin?'Edit Built-in: '+esc(tmpl.name):'Edit: '+esc(tmpl.name)):'New Template'}</div>
     ${!isBuiltin?`<input class="minp" id="sett-tmpled-name" value="${esc(name)}" placeholder="Template name…" style="margin-bottom:10px">`:''}
-    <div style="font-size:.61rem;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--txtmu);margin-bottom:6px">Stages</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <div style="font-size:.61rem;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--txtmu)">Stages</div>
+      <button onclick="togglePastePanel()" style="font-size:.63rem;padding:3px 9px;border-radius:5px;border:1px solid var(--lav-l);background:var(--lav-p);color:var(--lav);cursor:pointer;font-family:inherit">📋 Paste a List</button>
+    </div>
+    <div id="sett-paste-panel" style="display:none;background:var(--sf);border:1.5px solid var(--lav-l);border-radius:var(--rs);padding:12px;margin-bottom:10px">
+      <div style="font-size:.71rem;font-weight:700;color:var(--lav);margin-bottom:6px">Paste your stage list</div>
+      <div style="font-size:.63rem;color:var(--txtmu);margin-bottom:8px;line-height:1.5">
+        Lines without a dash = stage names. Lines starting with <code>-</code> or <code>•</code> = tasks.
+        <br>Example:<br>
+        <code style="display:block;margin-top:4px;white-space:pre;font-size:.61rem;color:var(--txt)">Research
+- Find 10 comp titles
+- Keyword research
+Outline
+- Chapter list
+- Character sheets</code>
+      </div>
+      <textarea class="minp" id="sett-paste-input" rows="8" style="font-size:.76rem;font-family:monospace;resize:vertical" placeholder="Paste your list here…"></textarea>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn-cre" onclick="parsePastedList()" style="font-size:.75rem">Parse & Add Stages</button>
+        <button class="btn-can" onclick="togglePastePanel()" style="font-size:.75rem">Cancel</button>
+      </div>
+    </div>
     <div id="sett-tmpled-stages" style="margin-bottom:8px">`;
   stages.forEach((s,si)=>{
     const sn=s.n||s.name||'';const tasks=s.t||s.tasks||[];
@@ -4057,6 +4092,53 @@ function viabilityScore(idea){
 }
 
 let _ideaStars={demand:0,effort:3,revenue:0};
+
+function togglePastePanel(){
+  const p=document.getElementById('sett-paste-panel');
+  if(p)p.style.display=p.style.display==='none'?'block':'none';
+}
+
+function parsePastedList(){
+  const inp=document.getElementById('sett-paste-input');
+  if(!inp||!inp.value.trim())return;
+  const lines=inp.value.split('\n');
+  const stages=[];
+  let currentStage=null;
+  lines.forEach(rawLine=>{
+    const line=rawLine.trim();
+    if(!line)return;
+    // Task line: starts with - • * or number+dot
+    const isTask=/^[-•*]|^\d+[\.\)]/.test(line);
+    if(isTask){
+      if(!currentStage){currentStage={n:'Stage',t:[]};}
+      // Strip the leading marker
+      const taskText=line.replace(/^[-•*]\s*/,'').replace(/^\d+[\.\)]\s*/,'').trim();
+      if(taskText)currentStage.t.push(taskText);
+    } else {
+      // Stage name — save previous and start new
+      if(currentStage)stages.push(currentStage);
+      currentStage={n:line,t:[]};
+    }
+  });
+  if(currentStage)stages.push(currentStage);
+  if(!stages.length){showToast('No stages found — make sure stage names are on their own lines.');return;}
+
+  // Render parsed stages into the stage editor DOM
+  const stagesContainer=document.getElementById('sett-tmpled-stages');
+  if(!stagesContainer)return;
+  stages.forEach((s,si)=>{
+    const div=document.createElement('div');
+    // Use the same renderSettStageRow structure
+    div.innerHTML=renderSettStageRow(s.n,s.t,si);
+    // renderSettStageRow returns a string — insert it
+    stagesContainer.insertAdjacentHTML('beforeend',renderSettStageRow(s.n,s.t,stagesContainer.children.length));
+  });
+  // Close paste panel and clear it
+  inp.value='';
+  togglePastePanel();
+  showToast(stages.length+' stage'+(stages.length===1?'':'s')+' added from your list.');
+}
+
 function toggleIdeaForm(){_ideaAddOpen=!_ideaAddOpen;_ideaStars={demand:0,effort:3,revenue:0};renderDashboard();}
 function toggleIdeasSidebar(){showIdeasInSidebar=!showIdeasInSidebar;renderTree();}
 function renderIdeasInline(){renderTree();}
@@ -4251,6 +4333,28 @@ function saveIdeaFromSidebar(){
   showToast('Idea saved!');
 }
 
+
+function toggleCollHold(projId,collId){
+  const pr=DB.projects.find(p=>p.id===projId);
+  const co=pr?(pr.collections||[]).find(c=>c.id===collId):null;
+  if(!co)return;
+  co.onHold=!co.onHold;
+  renderAll();
+  syncStart();
+  fdb.collection('collections').doc(collId).update({onHold:co.onHold})
+    .then(syncDone).catch(e=>syncFail('Update failed: '+e.message));
+  showToast(co.onHold?'Collection put on hold.':'Collection resumed.');
+}
+
+function toggleItemHold(itemId){
+  const item=findItem();if(!item||item.id!==itemId)return;
+  item.onHold=!item.onHold;
+  renderAll();
+  syncStart();
+  fdb.collection('items').doc(itemId).update({onHold:item.onHold})
+    .then(syncDone).catch(e=>syncFail('Update failed: '+e.message));
+  showToast(item.onHold?'Item put on hold.':'Item resumed.');
+}
 function toggleProjectHold(projId){
   const pr=DB.projects.find(p=>p.id===projId);if(!pr)return;
   pr.onHold=!pr.onHold;
