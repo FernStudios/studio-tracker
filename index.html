@@ -4339,11 +4339,19 @@ function toggleCollHold(projId,collId){
   const co=pr?(pr.collections||[]).find(c=>c.id===collId):null;
   if(!co)return;
   co.onHold=!co.onHold;
+  const val=co.onHold;
+  // Cascade to all items in this collection
+  const batch=fdb.batch();
+  batch.update(fdb.collection('collections').doc(collId),{onHold:val});
+  (co.items||[]).forEach(it=>{
+    it.onHold=val;
+    batch.update(fdb.collection('items').doc(it.id),{onHold:val});
+  });
   renderAll();
   syncStart();
-  fdb.collection('collections').doc(collId).update({onHold:co.onHold})
-    .then(syncDone).catch(e=>syncFail('Update failed: '+e.message));
-  showToast(co.onHold?'Collection put on hold.':'Collection resumed.');
+  batch.commit().then(syncDone).catch(e=>syncFail('Update failed: '+e.message));
+  const count=(co.items||[]).length;
+  showToast(val?'Collection + '+count+' item'+(count===1?'':'s')+' put on hold.':'Collection + '+count+' item'+(count===1?'':'s')+' resumed.');
 }
 
 function toggleItemHold(itemId){
@@ -4358,12 +4366,27 @@ function toggleItemHold(itemId){
 function toggleProjectHold(projId){
   const pr=DB.projects.find(p=>p.id===projId);if(!pr)return;
   pr.onHold=!pr.onHold;
+  const val=pr.onHold;
+  // Cascade to all collections and their items
+  const batch=fdb.batch();
+  batch.update(fdb.collection('projects').doc(projId),{onHold:val});
+  (pr.collections||[]).forEach(co=>{
+    co.onHold=val;
+    batch.update(fdb.collection('collections').doc(co.id),{onHold:val});
+    (co.items||[]).forEach(it=>{
+      it.onHold=val;
+      batch.update(fdb.collection('items').doc(it.id),{onHold:val});
+    });
+  });
+  (pr.items||[]).forEach(it=>{
+    it.onHold=val;
+    batch.update(fdb.collection('items').doc(it.id),{onHold:val});
+  });
   renderAll();
   syncStart();
-  fdb.collection('projects').doc(projId).update({onHold:pr.onHold})
-    .then(syncDone)
-    .catch(e=>syncFail('Could not update project: '+e.message));
-  showToast(pr.onHold?'Project put on hold.':'Project resumed.');
+  batch.commit().then(syncDone).catch(e=>syncFail('Could not update project: '+e.message));
+  const count=(pr.collections||[]).length+(pr.collections||[]).reduce((a,co)=>a+(co.items||[]).length,0)+(pr.items||[]).length;
+  showToast(val?'Project + '+count+' item'+(count===1?'':'s')+' put on hold.':'Project + '+count+' item'+(count===1?'':'s')+' resumed.');
 }
 function checkOnboarding(){
   const hasProjects=DB.projects.filter(p=>!p._hidden).length>0;
