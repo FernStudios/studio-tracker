@@ -629,6 +629,7 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--txt);displ
         <button class="btn-sb" style="border-color:var(--gold-l);background:var(--gold-p);color:var(--gold)" onclick="openModal('proj')">✦ New Project</button>
         <button class="btn-sb" style="border-color:var(--lav-l);background:var(--lav-p);color:var(--lav)" onclick="openModal('standalone')">+ Standalone Item</button>
         <button class="btn-sb" style="border-color:var(--sage-l);background:var(--sage-p);color:var(--sage)" onclick="openModalDirectItem(null)">+ Item to Project</button>
+        <button class="btn-sb" style="border-color:var(--gold-l);background:var(--gold-p);color:var(--gold)" onclick="toggleIdeasSidebar()">💡 Ideas Lot</button>
       </div>
       <div class="tree" id="tree"></div>
     </div>
@@ -1670,6 +1671,37 @@ function renderTree(){
     });
     h+='</div>';
   }
+  // Ideas section in sidebar
+  if(showIdeasInSidebar){
+    const ideas=getIdeas();
+    h+='<div class="standalone-sect" style="border-top-color:var(--gold-l)">';
+    h+='<div style="display:flex;align-items:center;justify-content:space-between;padding:0 4px 5px">';
+    h+='<span class="standalone-lbl" style="color:var(--gold)">💡 Ideas ('+ideas.length+')</span>';
+    h+='<button onclick="event.stopPropagation();_ideaAddOpen=true;renderIdeasInline()" style="font-size:.6rem;padding:2px 7px;border-radius:5px;border:1px solid var(--gold-l);background:var(--gold-p);color:var(--gold);cursor:pointer;font-family:inherit">+ Add</button>';
+    h+='</div>';
+    h+='<div id="ideas-inline-list">';
+    if(!ideas.length){
+      h+='<div style="padding:6px 8px;font-size:.72rem;color:var(--txtmu);font-style:italic">No ideas yet — capture one!</div>';
+    } else {
+      const sorted=[...ideas].sort((a,b)=>viabilityScore(b)-viabilityScore(a));
+      sorted.forEach(idea=>{
+        const vs=viabilityScore(idea);
+        const vc=vs>=13?'var(--sage)':vs>=9?'var(--gold)':'var(--rose)';
+        const plat=idea.platformId?getPlatform(idea.platformId):null;
+        h+='<div class="st-row" style="flex-direction:column;align-items:flex-start;gap:4px;cursor:default">';
+        h+='<div style="display:flex;align-items:center;gap:6px;width:100%">';
+        h+='<span style="font-size:.78rem;color:var(--txt);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(idea.title)+'</span>';
+        h+='<span style="font-size:.6rem;font-weight:800;color:'+vc+'">'+vs+'/15</span>';
+        h+='</div>';
+        h+='<div style="display:flex;gap:5px;align-items:center;width:100%">';
+        if(plat)h+='<span style="font-size:.55rem;padding:1px 5px;border-radius:8px;background:'+plat.color+'18;color:'+plat.color+'">'+plat.icon+' '+esc(plat.name)+'</span>';
+        h+='<button data-ideaid="'+idea.id+'" onclick="promoteIdeaToProject(this.dataset.ideaid)" style="font-size:.58rem;padding:2px 7px;border-radius:5px;border:1px solid var(--lav-l);background:var(--lav-p);color:var(--lav);cursor:pointer;font-family:inherit;margin-left:auto">🚀 Promote</button>';
+        h+='<button data-ideaid="'+idea.id+'" onclick="deleteIdea(this.dataset.ideaid)" style="font-size:.58rem;padding:2px 5px;border-radius:5px;border:1px solid var(--bdr);background:transparent;color:var(--txtmu);cursor:pointer">✕</button>';
+        h+='</div></div>';
+      });
+    }
+    h+='</div></div>';
+  }
   el.innerHTML=h||'<div style="padding:16px 8px;text-align:center;font-size:.74rem;font-style:italic;color:var(--txtmu)">No projects yet — create one above</div>';
 }
 
@@ -2352,7 +2384,7 @@ function renderKPI(wrap){
   h+=renderKpiPnLSection();
   h+=renderGoalsSection();
   h+=renderHealthDashboard();
-  h+=renderIdeasSection();
+  h+='</div></div>';
   wrap.innerHTML=h;
 }
 function buildDynamicFilterTabs(){
@@ -3880,6 +3912,7 @@ function renderHealthDashboard(){
 // FEATURE: IDEA PARKING LOT
 // ══════════════════════════════════════════════════════════════════
 let _ideaAddOpen=false;
+let showIdeasInSidebar=false;
 
 function getIdeas(){return DB.ideas||[];}
 
@@ -3978,6 +4011,8 @@ function viabilityScore(idea){
 
 let _ideaStars={demand:0,effort:3,revenue:0};
 function toggleIdeaForm(){_ideaAddOpen=!_ideaAddOpen;_ideaStars={demand:0,effort:3,revenue:0};renderDashboard();}
+function toggleIdeasSidebar(){showIdeasInSidebar=!showIdeasInSidebar;renderTree();}
+function renderIdeasInline(){renderTree();}
 function setIdeaStar(dim,n){
   _ideaStars[dim]=n;
   // Update star visuals inline
@@ -3994,14 +4029,14 @@ async function saveIdea(){
   _ideaAddOpen=false;_ideaStars={demand:0,effort:3,revenue:0};
   syncStart();
   fdb.collection('ideas').doc(idea.id).set(idea).then(syncDone).catch(e=>syncFail('Idea save failed:'+e.message));
-  renderDashboard();
+  if(showIdeasInSidebar)renderTree();else renderDashboard();
 }
 
 async function deleteIdea(ideaId){
   if(!await showConfirm('Delete this idea?','It will be permanently removed.','Delete','💡'))return;
   DB.ideas=(DB.ideas||[]).filter(i=>i.id!==ideaId);
   fdb.collection('ideas').doc(ideaId).delete().catch(()=>{});
-  renderDashboard();
+  if(showIdeasInSidebar)renderTree();else renderDashboard();
 }
 
 async function promoteIdeaToProject(ideaId){
