@@ -55,6 +55,10 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--txt);displ
 .hold-pill-off:hover{background:var(--gold);color:#fff}
 .hold-pill-on{border-color:var(--sage-l);background:var(--sage-p);color:var(--sage)}
 .hold-pill-on:hover{background:var(--sage);color:#fff}
+.status-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-family:'Nunito',sans-serif;font-size:.63rem;font-weight:800;flex-shrink:0}
+.sb-inprog{background:var(--sage-p);color:var(--sage);border:1.5px solid var(--sage-l)}
+.pause-btn{padding:3px 8px;border-radius:20px;border:1.5px solid var(--gold-l);background:var(--gold-p);color:var(--gold);font-family:'Nunito',sans-serif;font-size:.63rem;font-weight:800;cursor:pointer;transition:all .18s;flex-shrink:0}
+.pause-btn:hover{background:var(--gold);color:#fff}
 .hold-dim{opacity:.5}
 
 .hold-badge{font-size:.52rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);background:var(--gold-p);border:1px solid var(--gold-l);padding:1px 6px;border-radius:10px;flex-shrink:0}
@@ -1607,7 +1611,39 @@ async function deleteStandalone(id){
 function renderTree(){
   const el=document.getElementById('tree');if(!el)return;
   let h='';
+
+  // Partition: active vs on-hold
+  const activeProjects=[];
+  const holdBucket=[];
+
   DB.projects.filter(pr=>!pr._hidden).forEach(pr=>{
+    if(pr.onHold){
+      const itemCount=(pr.items||[]).length+(pr.collections||[]).reduce((a,c)=>a+(c.items||[]).length,0);
+      holdBucket.push({kind:'project',pr,label:pr.title,sublabel:(pr.collections||[]).length+' collections · '+itemCount+' items',pct:projPct(pr),selFn:"selProj('"+pr.id+"')",resumeFn:"toggleProjectHold('"+pr.id+"')"});
+    } else {
+      const activeCollections=[];
+      (pr.collections||[]).forEach(co=>{
+        if(co.onHold){
+          holdBucket.push({kind:'collection',pr,co,label:co.title,sublabel:pr.title+' · '+(co.items||[]).length+' items',pct:collPct(co),selFn:"selColl('"+pr.id+"','"+co.id+"')",resumeFn:"toggleCollHold('"+pr.id+"','"+co.id+"')"});
+        } else {
+          const activeItems=(co.items||[]).filter(it=>!it.onHold);
+          const holdItems=(co.items||[]).filter(it=>it.onHold);
+          holdItems.forEach(it=>holdBucket.push({kind:'item',pr,co,it,label:it.title+(it.edition?' — '+it.edition:''),sublabel:pr.title+' › '+co.title,pct:itemPct(it),selFn:"selItem('"+pr.id+"','"+co.id+"','"+it.id+"')",resumeFn:"toggleItemHold('"+it.id+"')"}));
+          activeCollections.push(Object.assign({},co,{items:activeItems}));
+        }
+      });
+      const activeDirectItems=(pr.items||[]).filter(it=>!it.onHold);
+      const holdDirectItems=(pr.items||[]).filter(it=>it.onHold);
+      holdDirectItems.forEach(it=>holdBucket.push({kind:'item',pr,co:null,it,label:it.title+(it.edition?' — '+it.edition:''),sublabel:pr.title,pct:itemPct(it),selFn:"selDirectItem('"+pr.id+"','"+it.id+"')",resumeFn:"toggleItemHold('"+it.id+"')"}));
+      activeProjects.push(Object.assign({},pr,{collections:activeCollections,items:activeDirectItems}));
+    }
+  });
+  const activeStandalone=(DB.standalone||[]).filter(i=>itemMatchesFilter(i)&&!i.onHold);
+  const holdStandalone=(DB.standalone||[]).filter(i=>i.onHold);
+  holdStandalone.forEach(it=>holdBucket.push({kind:'standalone',it,label:it.title+(it.edition?' — '+it.edition:''),sublabel:'Standalone',pct:itemPct(it),selFn:"selStandalone('"+it.id+"')",resumeFn:"toggleItemHold('"+it.id+"')"}));
+
+  // Render active projects
+  activeProjects.forEach(pr=>{
     const allItems=[];
     (pr.collections||[]).forEach(c=>(c.items||[]).forEach(i=>allItems.push(i)));
     (pr.items||[]).forEach(i=>allItems.push(i));
@@ -1615,13 +1651,12 @@ function renderTree(){
     if(!visible&&filter!=='all')return;
     const pct=projPct(pr);
     const isSel=SEL.type==='proj'&&SEL.projId===pr.id;
-    h+=`<div class="p-row${isSel?' pa':''}${pr.onHold?' p-row-hold':''}" onclick="selProj('${pr.id}')">
+    h+=`<div class="p-row${isSel?' pa':''}" onclick="selProj('${pr.id}')">
       <span class="caret${pr.collapsed?'':' open'}" onclick="toggleProjCollapse('${pr.id}',event)">▶</span>
       <div style="flex:1;min-width:0">
         <div class="p-name">${esc(pr.title)}</div>
-        <div class="p-bar-wrap"><div class="p-bar" style="width:${pct}%;background:${pr.onHold?'var(--gold)':'var(--gold)'}"></div></div>
+        <div class="p-bar-wrap"><div class="p-bar" style="width:${pct}%"></div></div>
       </div>
-      ${pr.onHold?'<span class="hold-badge">Hold</span>':''}
       <span class="p-pct">${pct}%</span>
     </div>`;
     if(!pr.collapsed){
@@ -1639,7 +1674,6 @@ function renderTree(){
           coItems.forEach(it=>{
             const ipct=itemPct(it);
             const isSeli=SEL.type==='item'&&SEL.itemId===it.id;
-            const platColor=getPlatColor(it.platformId);
             const ic=it.icon||getPlatIcon(it.platformId)||'📦';
             h+=`<div class="i-block"><div class="i-row${isSeli?' ia':''}" onclick="selItem('${pr.id}','${co.id}','${it.id}')">
               ${it.edition?`<span class="ed-lbl ${edClass(it.edition)}">${esc(it.edition)}</span>`:'<span style="min-width:22px"></span>'}
@@ -1667,12 +1701,12 @@ function renderTree(){
       h+=`<div class="i-block" style="padding-top:1px;padding-bottom:5px"><button class="tree-btn ti" onclick="openModalDirectItem('${pr.id}')">+ Add Item Directly</button></div>`;
     }
   });
-  const sts=(DB.standalone||[]).filter(i=>itemMatchesFilter(i));
-  if(sts.length){
+
+  // Standalone active
+  if(activeStandalone.length){
     h+=`<div class="standalone-sect"><span class="standalone-lbl">Standalone</span>`;
-    sts.forEach(it=>{
+    activeStandalone.forEach(it=>{
       const pct=itemPct(it);const isSel=SEL.type==='standalone'&&SEL.itemId===it.id;
-      const platColor=getPlatColor(it.platformId);
       const ic=it.icon||getPlatIcon(it.platformId)||'📦';
       h+=`<div class="st-row${isSel?' sta':''}" onclick="selStandalone('${it.id}')">
         <span style="font-size:.82rem;flex-shrink:0">${ic}</span>
@@ -1682,10 +1716,36 @@ function renderTree(){
     });
     h+='</div>';
   }
-  // Ideas section in sidebar
+
+  // On Hold bucket
+  if(holdBucket.length){
+    h+='<div class="standalone-sect" style="border-top-color:var(--gold-l)">';
+    h+='<div style="display:flex;align-items:center;justify-content:space-between;padding:0 4px 6px;cursor:pointer" onclick="holdBucketCollapsed=!holdBucketCollapsed;renderTree()">';
+    h+='<span class="standalone-lbl" style="color:var(--gold)">⏸ On Hold ('+holdBucket.length+')</span>';
+    h+='<span style="font-size:.65rem;color:var(--gold);transition:transform .2s;display:inline-block;'+(holdBucketCollapsed?'':'transform:rotate(180deg)')+'">▾</span>';
+    h+='</div>';
+    if(!holdBucketCollapsed){
+      holdBucket.forEach(function(entry){
+        const icon=entry.kind==='project'?'🗂':entry.kind==='collection'?'📁':((entry.it&&(entry.it.icon||getPlatIcon(entry.it.platformId)))||'📋');
+        h+='<div style="display:flex;align-items:center;gap:6px;padding:7px 8px;border-radius:var(--rs);border:1.5px dashed var(--gold-l);background:var(--gold-xp,#fdf9f2);margin-bottom:4px;cursor:pointer" onclick="'+entry.selFn+'">';
+        h+='<span style="font-size:.82rem;flex-shrink:0">'+icon+'</span>';
+        h+='<div style="flex:1;min-width:0">';
+        h+='<div style="font-size:.75rem;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600">'+entry.label+'</div>';
+        h+='<div style="font-size:.58rem;color:var(--txtmu);margin-top:1px">'+entry.sublabel+'</div>';
+        h+='</div>';
+        h+='<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0">';
+        h+='<span style="font-size:.57rem;font-weight:700;color:var(--txtmu)">'+(entry.pct||0)+'%</span>';
+        h+='<button data-rfn="'+entry.resumeFn+'" onclick="event.stopPropagation();eval(this.dataset.rfn)" style="font-size:.54rem;padding:2px 6px;border-radius:4px;border:1px solid var(--sage-l);background:var(--sage-p);color:var(--sage);cursor:pointer;font-family:inherit;font-weight:700;white-space:nowrap">▶ Resume</button>';
+        h+='</div></div>';
+      });
+    }
+    h+='</div>';
+  }
+
+  // Ideas section
   if(showIdeasInSidebar){
     const ideas=getIdeas();
-    const platOpts=getPlatforms().map(p=>'<option value="'+p.id+'">'+p.icon+' '+esc(p.name)+'</option>').join('');
+    const platOpts=getPlatforms().map(function(p){return '<option value="'+p.id+'">'+p.icon+' '+esc(p.name)+'</option>';}).join('');
     h+='<div class="standalone-sect" style="border-top-color:var(--gold-l)">';
     h+='<div style="display:flex;align-items:center;justify-content:space-between;padding:0 4px 6px">';
     h+='<span class="standalone-lbl" style="color:var(--gold)">💡 Ideas ('+ideas.length+')</span>';
@@ -1695,46 +1755,33 @@ function renderTree(){
       h+='<button onclick="_ideaAddOpen=true;renderTree()" style="font-size:.6rem;padding:2px 7px;border-radius:5px;border:1px solid var(--gold-l);background:var(--gold-p);color:var(--gold);cursor:pointer;font-family:inherit">+ Add</button>';
     }
     h+='</div>';
-    // Inline add form
     if(_ideaAddOpen){
       h+='<div style="background:var(--gold-xp,#fdf9f2);border:1.5px solid var(--gold-l);border-radius:var(--rs);padding:11px;margin-bottom:8px">';
       h+='<input class="minp" id="idea-title" placeholder="Idea title…" style="margin-bottom:7px;font-size:.79rem">';
       h+='<textarea class="minp" id="idea-desc" rows="2" style="resize:none;font-size:.75rem;margin-bottom:7px" placeholder="What makes it unique?"></textarea>';
       h+='<select class="msel" id="idea-plat" style="margin-bottom:7px;font-size:.75rem"><option value="">— Platform TBD —</option>'+platOpts+'</select>';
-      h+='<div style="display:flex;gap:8px;margin-bottom:7px">';
-      h+='<input class="minp" type="number" id="idea-price" placeholder="Est. price" step="0.01" min="0" style="flex:1;font-size:.75rem">';
-      h+='</div>';
-      // Star ratings
+      h+='<div style="display:flex;gap:8px;margin-bottom:7px"><input class="minp" type="number" id="idea-price" placeholder="Est. price" step="0.01" min="0" style="flex:1;font-size:.75rem"></div>';
       h+='<div style="display:flex;flex-direction:column;gap:5px;margin-bottom:9px">';
-      ['demand','effort','revenue'].forEach(dim=>{
-        const lbl=dim==='demand'?'Demand':dim==='effort'?'Effort ↓':'Revenue';
-        h+='<div style="display:flex;align-items:center;gap:6px">';
-        h+='<span style="font-size:.62rem;font-weight:700;color:var(--txtmu);min-width:48px">'+lbl+'</span>';
-        for(let n=1;n<=5;n++){
-          const filled=_ideaStars[dim]>=n;
+      ['demand','effort','revenue'].forEach(function(dim){
+        var lbl=dim==='demand'?'Demand':dim==='effort'?'Effort':'Revenue';
+        h+='<div style="display:flex;align-items:center;gap:6px"><span style="font-size:.62rem;font-weight:700;color:var(--txtmu);min-width:48px">'+lbl+'</span>';
+        for(var n=1;n<=5;n++){
+          var filled=_ideaStars[dim]>=n;
           h+='<span class="istar'+(filled?' on':'')+'" id="idea-'+dim+'-'+n+'" onclick="setIdeaStar(\''+dim+'\','+n+')" style="cursor:pointer;font-size:1rem;color:'+(filled?'var(--gold)':'var(--bdrl)')+'">★</span>';
         }
         h+='</div>';
       });
-      h+='</div>';
-      h+='<div style="display:flex;gap:6px">';
-      h+='<button class="btn-cre" onclick="saveIdeaFromSidebar()" style="flex:1;font-size:.74rem;padding:7px">Save Idea</button>';
-      h+='</div></div>';
+      h+='</div><div style="display:flex;gap:6px"><button class="btn-cre" onclick="saveIdeaFromSidebar()" style="flex:1;font-size:.74rem;padding:7px">Save Idea</button></div></div>';
     }
-    // Ideas list
     if(!ideas.length&&!_ideaAddOpen){
       h+='<div style="padding:4px 8px 8px;font-size:.72rem;color:var(--txtmu);font-style:italic">No ideas yet — tap + Add to capture one.</div>';
     } else {
-      const sorted=[...ideas].sort((a,b)=>viabilityScore(b)-viabilityScore(a));
-      sorted.forEach(idea=>{
-        const vs=viabilityScore(idea);
-        const vc=vs>=13?'var(--sage)':vs>=9?'var(--gold)':'var(--rose)';
-        const plat=idea.platformId?getPlatform(idea.platformId):null;
-        h+='<div style="padding:8px 6px;border-bottom:1px solid var(--bdrl)">';
-        h+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">';
-        h+='<span style="font-size:.76rem;color:var(--txt);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600">'+esc(idea.title)+'</span>';
-        h+='<span style="font-size:.6rem;font-weight:800;color:'+vc+'">'+vs+'/15</span>';
-        h+='</div>';
+      var sorted=[].concat(ideas).sort(function(a,b){return viabilityScore(b)-viabilityScore(a);});
+      sorted.forEach(function(idea){
+        var vs=viabilityScore(idea);
+        var vc=vs>=13?'var(--sage)':vs>=9?'var(--gold)':'var(--rose)';
+        var plat=idea.platformId?getPlatform(idea.platformId):null;
+        h+='<div style="padding:8px 6px;border-bottom:1px solid var(--bdrl)"><div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><span style="font-size:.76rem;color:var(--txt);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600">'+esc(idea.title)+'</span><span style="font-size:.6rem;font-weight:800;color:'+vc+'">'+vs+'/15</span></div>';
         h+='<div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">';
         if(plat)h+='<span style="font-size:.57rem;padding:1px 6px;border-radius:8px;background:'+plat.color+'18;color:'+plat.color+';border:1px solid '+plat.color+'33">'+plat.icon+' '+esc(plat.name)+'</span>';
         h+='<button data-ideaid="'+idea.id+'" onclick="promoteIdeaToProject(this.dataset.ideaid)" style="font-size:.6rem;padding:2px 8px;border-radius:5px;border:1px solid var(--lav-l);background:var(--lav-p);color:var(--lav);cursor:pointer;font-family:inherit;margin-left:auto">🚀 Promote</button>';
@@ -1744,8 +1791,10 @@ function renderTree(){
     }
     h+='</div>';
   }
+
   el.innerHTML=h||'<div style="padding:16px 8px;text-align:center;font-size:.74rem;font-style:italic;color:var(--txtmu)">No projects yet — create one above</div>';
 }
+
 
 // ── MAIN RENDER ──
 function renderMain(){
@@ -1820,7 +1869,7 @@ function renderProjDash(el,pr){
     </div>
   </div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0">
     <div class="ring-wrap">${ring(pct,60,5,'#7c6ab5','#ddd0e8')}<div class="ring-pct">${pct}%</div></div>
-    <button class="hold-pill ${pr.onHold?'hold-pill-on':'hold-pill-off'}" onclick="toggleProjectHold('${pr.id}')">${pr.onHold?'▶ Resume':'⏸ On Hold'}</button>
+    ${pr.onHold?`<button class="hold-pill hold-pill-on" onclick="toggleProjectHold('${pr.id}')">▶ Resume</button>`:`<div style="display:flex;gap:5px;align-items:center"><span class="status-badge sb-inprog">● In Progress</span><button class="pause-btn" onclick="toggleProjectHold('${pr.id}')">⏸</button></div>`}
   </div></div>
   <div class="dash-stats">
     <div class="ds"><div class="ds-v">${allItems.length}</div><div class="ds-l">Items</div></div>
@@ -1888,7 +1937,7 @@ function renderCollDash(el,pr,co){
     </div>
   </div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0">
     <div class="ring-wrap">${ring(cpct,60,5,'#7c6ab5','#ddd0e8')}<div class="ring-pct">${cpct}%</div></div>
-    <button class="hold-pill ${co.onHold?'hold-pill-on':'hold-pill-off'}" onclick="toggleCollHold('${pr.id}','${co.id}')">${co.onHold?'▶ Resume':'⏸ On Hold'}</button>
+    ${co.onHold?`<button class="hold-pill hold-pill-on" onclick="toggleCollHold('${pr.id}','${co.id}')">▶ Resume</button>`:`<div style="display:flex;gap:5px;align-items:center"><span class="status-badge sb-inprog">● In Progress</span><button class="pause-btn" onclick="toggleCollHold('${pr.id}','${co.id}')">⏸</button></div>`}
   </div></div>
   <div class="dash-stats">
     <div class="ds"><div class="ds-v">${items.length}</div><div class="ds-l">Items</div></div>
@@ -1941,7 +1990,7 @@ function renderItemView(el,item){
     <div class="pb-row">
       <span class="pb" style="background:${platColor}18;color:${platColor};border-color:${platColor}44">${platIcon} ${esc(platName)}</span>
       ${item.edition?`<span class="pb" style="background:var(--lav-p);color:var(--lav);border-color:var(--lav-l)">${esc(item.edition)}</span>`:''}
-      <button class="hold-pill ${item.onHold?'hold-pill-on':'hold-pill-off'}" onclick="toggleItemHold('${item.id}')">${item.onHold?'▶ Resume':'⏸ On Hold'}</button>
+      ${item.onHold?`<button class="hold-pill hold-pill-on" onclick="toggleItemHold('${item.id}')">▶ Resume</button>`:`<div style="display:flex;gap:5px;align-items:center"><span class="status-badge sb-inprog">● In Progress</span><button class="pause-btn" onclick="toggleItemHold('${item.id}')">⏸</button></div>`}
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <div class="proj-title" id="item-title-d-${item.id}">${esc(item.title)}</div>
@@ -2371,10 +2420,12 @@ function renderKPI(wrap){
   const roas=totalAdSpend>0?(totalAdRev/totalAdSpend).toFixed(2)+'x':'—';
   const total=entries.length||1;
   const liveItems=entries.filter(e=>itemPct(e.item)===100).length;
-  const inProg=entries.filter(e=>{const p=itemPct(e.item);return p>0&&p<100;});
+  const onHoldItems=entries.filter(e=>e.item.onHold);
+  const activeEntries=entries.filter(e=>!e.item.onHold);
+  const inProg=activeEntries.filter(e=>{const p=itemPct(e.item);return p>0&&p<100;});
   const stuckItems=inProg.filter(e=>isStuck(e.item));
   const activeItems=inProg.filter(e=>!isStuck(e.item));
-  const notStarted=entries.filter(e=>itemPct(e.item)===0).length;
+  const notStarted=activeEntries.filter(e=>itemPct(e.item)===0).length;
   const months=Object.keys(monthMap).sort().slice(-6);
   const maxRev=Math.max(...months.map(m=>monthMap[m].rev),1);
   const c=DB.settings&&DB.settings.currency||'$';
@@ -2424,10 +2475,12 @@ function renderKPI(wrap){
     </div></div></div>
     <div class="kpi-sect"><div class="kpi-sect-title">Pipeline Status</div>
       <div class="kpi-cards" style="margin-bottom:12px">
-        <div class="kc kc-sage"><div class="kc-lbl">Live / Complete</div><div class="kc-val">${liveItems}</div><div class="kc-sub">of ${entries.length} total</div></div>
+        <div class="kc kc-sage"><div class="kc-lbl">Live / Complete</div><div class="kc-val">${liveItems}</div><div class="kc-sub">of ${activeEntries.length} active</div></div>
         <div class="kc kc-lav"><div class="kc-lbl">Active</div><div class="kc-val">${activeItems.length}</div><div class="kc-sub">within ${stuckDays}d</div></div>
         <div class="kc kc-rose"><div class="kc-lbl">Stuck</div><div class="kc-val">${stuckItems.length}</div><div class="kc-sub">no activity ${stuckDays}+ days</div></div>
         <div class="kc" style="border-left-color:var(--txtmu)"><div class="kc-lbl">Not Started</div><div class="kc-val">${notStarted}</div></div>
+        <div class="kc" style="border-left-color:var(--gold)"><div class="kc-lbl">On Hold</div><div class="kc-val">${onHoldItems.length}</div><div class="kc-sub">${onHoldItems.length>0?'<span style=\"cursor:pointer;color:var(--gold);text-decoration:underline\" onclick=\"setTopTab(\'tracker\')\">view in tracker</span>':'none'}</div></div>
+        <div class="kc" style="border-left-color:var(--lav)"><div class="kc-lbl">Ideas</div><div class="kc-val">${getIdeas().length}</div><div class="kc-sub">${getIdeas().length>0?'<span style=\"cursor:pointer;color:var(--lav);text-decoration:underline\" onclick=\"showIdeasInSidebar=true;setTopTab(\'tracker\')\">'+getIdeas().filter(i=>viabilityScore(i)>=13).length+' high potential</span>':'none in lot'}</div></div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:.72rem;color:var(--txtmu)">
         <span>Stuck threshold:</span>
@@ -3251,6 +3304,7 @@ function savePricingField(itemId,key,value){
   },900);
 }
 
+
 function renderPricingTab(item,delFn){
   const c=DB.settings&&DB.settings.currency||'$';
   const pr=getPricing(item);
@@ -3259,35 +3313,53 @@ function renderPricingTab(item,delFn){
   const model=getPlatformPricingModel(item);
   const plat=getPlatform(item.platformId);
   const platName=plat?plat.name:'Unknown';
+  const iid=item.id;
+  const pricingType=pr.pricingType||'onetime'; // 'onetime' | 'subscription'
+  const rows=[];
+
+  rows.push('<div class="pricing-body">');
+
+  // ── PRICING TYPE TOGGLE ──
+  rows.push('<div style="display:flex;gap:0;margin-bottom:14px;border:1.5px solid var(--bdr);border-radius:var(--rs);overflow:hidden;align-self:flex-start">');
+  rows.push('<button data-iid="'+iid+'" data-field="pricingType" data-val="onetime" onclick="onPricingToggle(this)" style="padding:7px 16px;border:none;background:'+(pricingType==='onetime'?'var(--lav)':'transparent')+';color:'+(pricingType==='onetime'?'#fff':'var(--txtmu)')+';font-family:\'Nunito\',sans-serif;font-size:.74rem;font-weight:700;cursor:pointer;transition:all .18s">💰 One-Time</button>');
+  rows.push('<button data-iid="'+iid+'" data-field="pricingType" data-val="subscription" onclick="onPricingToggle(this)" style="padding:7px 16px;border:none;background:'+(pricingType==='subscription'?'var(--lav)':'transparent')+';color:'+(pricingType==='subscription'?'#fff':'var(--txtmu)')+';font-family:\'Nunito\',sans-serif;font-size:.74rem;font-weight:700;cursor:pointer;transition:all .18s;border-left:1px solid var(--bdr)">🔄 Subscription</button>');
+  rows.push('</div>');
+
+  if(pricingType==='subscription'){
+    rows.push.apply(rows,renderSubscriptionPricing(item,pr,pnl,model,platName,c,iid,delFn));
+  } else {
+    rows.push.apply(rows,renderOneTimePricing(item,pr,pnl,model,platName,c,iid,delFn));
+  }
+  rows.push('</div>');
+  return rows.join('\n');
+}
+
+// ── ONE-TIME PRICING ──
+function renderOneTimePricing(item,pr,pnl,model,platName,c,iid,delFn){
+  const rows=[];
+  const totalCosts=pnl.totalCosts;
   const markup=parseFloat(pr.markupMultiplier)||3;
   const months=parseFloat(pr.targetMonths)||6;
   const monthlySales=parseFloat(pr.expectedMonthlySales)||0;
   const targetTakeHome=parseFloat(pr.targetTakeHome)||0;
   const fileSizeMb=parseFloat(pr.fileSizeMb)||2;
   const smallDev=pr.smallDev||false;
-  const iid=item.id;
 
   // Method 1: cost-plus
   let cpPrice=null,cpNote='';
   if(totalCosts>0&&monthlySales>0){
     cpPrice=(totalCosts/monthlySales)*markup;
-    cpNote=c+totalCosts.toFixed(2)+' costs ÷ '+monthlySales+' sales × '+markup+'× markup = '+c+cpPrice.toFixed(2)+' per unit';
-  } else if(totalCosts>0){
-    cpNote='Enter expected monthly sales to calculate per-unit cost-plus price';
-  } else {
-    cpNote='No costs logged on the P&L tab yet';
-  }
+    cpNote=c+totalCosts.toFixed(2)+' ÷ '+monthlySales+' sales × '+markup+'× = '+c+cpPrice.toFixed(2)+' per unit';
+  } else if(totalCosts>0){ cpNote='Enter expected monthly sales below'; }
+  else { cpNote='No costs logged on the P&L tab yet'; }
 
-  // Method 2: target ROI
+  // Method 2: target payback
   let roiPrice=null,roiNote='';
   if(totalCosts>0&&monthlySales>0){
     roiPrice=totalCosts/(months*monthlySales);
-    roiNote='Recover '+c+totalCosts.toFixed(2)+' in '+months+' months at '+monthlySales+' sales/mo = '+Math.round(months*monthlySales)+' total sales needed. Min price: '+c+roiPrice.toFixed(2);
-  } else if(totalCosts===0){
-    roiNote='Add costs on the P&L tab to use this calculator';
-  } else {
-    roiNote='Enter expected monthly sales above';
-  }
+    roiNote='Recover '+c+totalCosts.toFixed(2)+' in '+months+' months at '+monthlySales+' sales/mo ('+Math.round(months*monthlySales)+' total sales). Min price: '+c+roiPrice.toFixed(2);
+  } else if(totalCosts===0){ roiNote='Add costs on the P&L tab to use this calculator'; }
+  else { roiNote='Enter expected monthly sales below'; }
 
   // Method 3: platform royalty backward
   let royaltyListPrice=null,royaltyNote='',royaltyBreakdown='',tierLabel='',tierOk=true;
@@ -3300,20 +3372,16 @@ function renderPricingTab(item,delFn){
       if(check.warning)royaltyNote=check.warning;
     } else if(model.type==='etsy'){
       royaltyListPrice=etsyPriceForNet(targetTakeHome);
-      const check=calcEtsyNet(royaltyListPrice);royaltyBreakdown=check.breakdown;
+      royaltyBreakdown=calcEtsyNet(royaltyListPrice).breakdown;
     } else if(model.type==='app'){
       royaltyListPrice=appPriceForNet(targetTakeHome,smallDev);
-      const check=calcAppNet(royaltyListPrice,smallDev);royaltyBreakdown=check.breakdown;
+      royaltyBreakdown=calcAppNet(royaltyListPrice,smallDev).breakdown;
     } else {
-      const cut=parseFloat(model.cutPct)||0;
-      const flat=parseFloat(model.flatFee)||0;
+      const cut=parseFloat(model.cutPct)||0,flat=parseFloat(model.flatFee)||0;
       royaltyListPrice=genericPriceForNet(targetTakeHome,cut,flat);
-      let feeDesc='';
-      if(cut>0&&flat>0)feeDesc=cut+'% + $'+flat.toFixed(2)+' flat';
-      else if(cut>0)feeDesc=cut+'% fee';
-      else if(flat>0)feeDesc='$'+flat.toFixed(2)+' flat fee';
-      royaltyNote=feeDesc?'After '+feeDesc:'No platform fee set — configure in Settings → Platforms';
-      if(cut>0||flat>0){const check=calcGenericNet(royaltyListPrice,cut,flat);royaltyBreakdown=check.breakdown;}
+      let fd='';if(cut>0&&flat>0)fd=cut+'% + $'+flat.toFixed(2)+' flat';else if(cut>0)fd=cut+'% fee';else if(flat>0)fd='$'+flat.toFixed(2)+' flat';
+      royaltyNote=fd?'After '+fd:'No platform fee set — configure in Settings → Platforms';
+      if(cut>0||flat>0)royaltyBreakdown=calcGenericNet(royaltyListPrice,cut,flat).breakdown;
     }
   }
 
@@ -3324,116 +3392,216 @@ function renderPricingTab(item,delFn){
   const recLow=suggestions.length?Math.min(...suggestions):null;
   const recHigh=suggestions.length?Math.max(...suggestions):null;
 
-  // Build HTML using array join to avoid quote nesting issues
-  const rows=[];
-  rows.push('<div class="pricing-body">');
-
-  // Recommendation banner
+  // Banner
   rows.push('<div class="pricing-rec">');
-  rows.push('<div class="pricing-rec-lbl">Suggested Price Range</div>');
-  if(suggestions.length>=2){
-    rows.push('<div class="pricing-rec-range">'+c+recLow.toFixed(2)+' – '+c+recHigh.toFixed(2)+'</div>');
-    rows.push('<div class="pricing-rec-sub">Based on '+suggestions.length+' methods · Final price is your call</div>');
-  } else if(suggestions.length===1){
-    rows.push('<div class="pricing-rec-range">'+c+suggestions[0].toFixed(2)+'</div>');
-    rows.push('<div class="pricing-rec-sub">Complete more fields for a fuller picture</div>');
-  } else {
-    rows.push('<div class="pricing-rec-range" style="font-size:1rem;color:var(--txtmu)">Fill in the fields below</div>');
-    rows.push('<div class="pricing-rec-sub">Enter costs, expected sales, or a target take-home</div>');
-  }
-  // Saved price row — use data attribute + separate listener to avoid quote hell
+  rows.push('<div class="pricing-rec-lbl">Suggested One-Time Price</div>');
+  if(suggestions.length>=2) rows.push('<div class="pricing-rec-range">'+c+recLow.toFixed(2)+' – '+c+recHigh.toFixed(2)+'</div><div class="pricing-rec-sub">'+suggestions.length+' methods · your judgment wins</div>');
+  else if(suggestions.length===1) rows.push('<div class="pricing-rec-range">'+c+suggestions[0].toFixed(2)+'</div><div class="pricing-rec-sub">Complete more fields for a range</div>');
+  else rows.push('<div class="pricing-rec-range" style="font-size:1rem;color:var(--txtmu)">Fill in the fields below</div>');
   const savedVal=pr.savedPrice?parseFloat(pr.savedPrice).toFixed(2):'';
-  rows.push('<div class="pricing-saved-row">');
-  rows.push('<span class="pricing-saved-lbl">Your set price:</span>');
-  rows.push('<span class="pricing-saved-val" id="psd-'+iid+'">'+(pr.savedPrice?c+savedVal:'Not set')+'</span>');
-  rows.push('<input class="pricing-inp" type="number" step="0.01" min="0" placeholder="0.00" value="'+savedVal+'" data-iid="'+iid+'" data-field="savedPrice" onchange="onPricingChange(this)">');
-  rows.push('</div></div>');
+  rows.push('<div class="pricing-saved-row"><span class="pricing-saved-lbl">Your set price:</span><span class="pricing-saved-val" id="psd-'+iid+'">'+(savedVal?c+savedVal:'Not set')+'</span><input class="pricing-inp" type="number" step="0.01" min="0" placeholder="0.00" value="'+savedVal+'" data-iid="'+iid+'" data-field="savedPrice" onchange="onPricingChange(this)"></div>');
+  rows.push('</div>');
 
   // Platform note
-  if(model.type==='kdp') rows.push('<div class="pricing-platform-note">KDP: 70% royalty at $2.99–$9.99 · 35% outside that · $0.15/MB delivery fee deducted</div>');
-  else if(model.type==='etsy') rows.push('<div class="pricing-platform-note">Etsy: 6.5% transaction + $0.20 listing + ~3.5% payment processing</div>');
-  else if(model.type==='app') rows.push('<div class="pricing-platform-note">App Store / Play Store: 30% cut (15% Small Business Program)</div>');
-  else if(model.cutPct||model.flatFee){
-    const feeParts=[];
-    if(model.cutPct)feeParts.push(model.cutPct+'%');
-    if(model.flatFee)feeParts.push(c+parseFloat(model.flatFee).toFixed(2)+' flat');
-    rows.push('<div class="pricing-platform-note">'+esc(platName)+': '+feeParts.join(' + ')+' per sale configured</div>');
-  }
-  else rows.push('<div class="pricing-platform-note" style="color:var(--gold);border-color:var(--gold-l);background:var(--gold-p)">'+esc(platName)+': No platform fee set · <span style="cursor:pointer;text-decoration:underline" onclick="setTopTab(\'settings\')">Set in Settings → Platforms</span></div>');
+  rows.push(platFeeNote(model,platName,c));
 
-  // Shared inputs — use data attributes for all oninput handlers
-  rows.push('<div class="pricing-method" style="background:var(--bg);border-color:var(--bdrl)">');
-  rows.push('<div class="pricing-method-title" style="margin-bottom:10px">Shared Inputs</div>');
-  rows.push('<div class="pricing-input-row"><span class="pricing-input-lbl">Expected monthly sales</span>');
-  rows.push('<input class="pricing-inp" type="number" min="0" step="1" placeholder="e.g. 20" value="'+(pr.expectedMonthlySales||'')+'" data-iid="'+iid+'" data-field="expectedMonthlySales" onchange="onPricingChange(this)">');
-  rows.push('</div></div>');
+  // Shared inputs
+  rows.push('<div class="pricing-method" style="background:var(--bg);border-color:var(--bdrl)"><div class="pricing-method-title" style="margin-bottom:10px">Shared Inputs</div>');
+  rows.push('<div class="pricing-input-row"><span class="pricing-input-lbl">Expected monthly sales</span><input class="pricing-inp" type="number" min="0" step="1" placeholder="e.g. 20" value="'+(pr.expectedMonthlySales||'')+'" data-iid="'+iid+'" data-field="expectedMonthlySales" onchange="onPricingChange(this)"></div></div>');
 
   // Method 1
-  rows.push('<div class="pricing-method">');
-  rows.push('<div class="pricing-method-hdr"><span class="pricing-method-title">① Cost-Plus</span>');
-  rows.push('<span class="pricing-method-result">'+(cpPrice?c+cpPrice.toFixed(2):'—')+'</span></div>');
-  rows.push('<div class="pricing-input-row"><span class="pricing-input-lbl">Markup multiplier</span>');
-  rows.push('<input class="pricing-inp" type="number" min="1" step="0.5" placeholder="3" value="'+(pr.markupMultiplier||3)+'" data-iid="'+iid+'" data-field="markupMultiplier" onchange="onPricingChange(this)">');
-  rows.push('<span style="font-size:.68rem;color:var(--txtmu)">× (costs ÷ monthly sales)</span></div>');
+  rows.push('<div class="pricing-method"><div class="pricing-method-hdr"><span class="pricing-method-title">① Cost-Plus</span><span class="pricing-method-result">'+(cpPrice?c+cpPrice.toFixed(2):'—')+'</span></div>');
+  rows.push('<div class="pricing-input-row"><span class="pricing-input-lbl">Markup multiplier</span><input class="pricing-inp" type="number" min="1" step="0.5" placeholder="3" value="'+(pr.markupMultiplier||3)+'" data-iid="'+iid+'" data-field="markupMultiplier" onchange="onPricingChange(this)"><span style="font-size:.68rem;color:var(--txtmu)">× (costs ÷ monthly sales)</span></div>');
   rows.push('<div class="pricing-note">'+cpNote+'</div>');
-  if(totalCosts>0)rows.push('<div class="pricing-breakdown">P&L costs: <b>'+c+totalCosts.toFixed(2)+'</b>'+(pnl.adSpend>0?' (incl. '+c+pnl.adSpend.toFixed(2)+' ad spend)':'')+'</div>');
+  if(totalCosts>0)rows.push('<div class="pricing-breakdown">P&L costs: <b>'+c+totalCosts.toFixed(2)+'</b>'+(pnl.adSpend>0?' (incl. '+c+pnl.adSpend.toFixed(2)+' ads)':'')+'</div>');
   rows.push('</div>');
 
   // Method 2
-  rows.push('<div class="pricing-method">');
-  rows.push('<div class="pricing-method-hdr"><span class="pricing-method-title">② Target Payback</span>');
-  rows.push('<span class="pricing-method-result">'+(roiPrice?c+roiPrice.toFixed(2):'—')+'</span></div>');
-  rows.push('<div class="pricing-input-row"><span class="pricing-input-lbl">Break-even in (months)</span>');
-  rows.push('<input class="pricing-inp" type="number" min="1" step="1" placeholder="6" value="'+(pr.targetMonths||6)+'" data-iid="'+iid+'" data-field="targetMonths" onchange="onPricingChange(this)">');
-  rows.push('</div>');
+  rows.push('<div class="pricing-method"><div class="pricing-method-hdr"><span class="pricing-method-title">② Target Payback</span><span class="pricing-method-result">'+(roiPrice?c+roiPrice.toFixed(2):'—')+'</span></div>');
+  rows.push('<div class="pricing-input-row"><span class="pricing-input-lbl">Break-even in (months)</span><input class="pricing-inp" type="number" min="1" step="1" placeholder="6" value="'+(pr.targetMonths||6)+'" data-iid="'+iid+'" data-field="targetMonths" onchange="onPricingChange(this)"></div>');
   rows.push('<div class="pricing-note">'+roiNote+'</div>');
   if(totalCosts>0&&roiPrice)rows.push('<div class="pricing-breakdown">Minimum net per sale. Add platform fee margin before setting final price.</div>');
   rows.push('</div>');
 
   // Method 3
   const tierCls=model.type==='kdp'?(tierOk?'pt-green':'pt-amber'):'';
-  rows.push('<div class="pricing-method">');
-  rows.push('<div class="pricing-method-hdr"><span class="pricing-method-title">③ Platform Royalty (Backward)</span>');
-  rows.push('<span class="pricing-method-result">');
-  if(royaltyListPrice)rows.push(c+royaltyListPrice.toFixed(2)+(model.type==='kdp'?'<span class="pricing-tier-pill '+tierCls+'">'+tierLabel+'</span>':''));
-  else rows.push('—');
-  rows.push('</span></div>');
-  rows.push('<div class="pricing-input-row"><span class="pricing-input-lbl">Target take-home / sale</span>');
-  rows.push('<input class="pricing-inp" type="number" min="0" step="0.01" placeholder="e.g. 2.50" value="'+(pr.targetTakeHome||'')+'" data-iid="'+iid+'" data-field="targetTakeHome" onchange="onPricingChange(this)">');
-  rows.push('</div>');
-  if(model.type==='kdp'){
-    rows.push('<div class="pricing-input-row"><span class="pricing-input-lbl">Ebook file size (MB)</span>');
-    rows.push('<input class="pricing-inp" type="number" min="0" step="0.1" placeholder="2" value="'+(pr.fileSizeMb||2)+'" data-iid="'+iid+'" data-field="fileSizeMb" onchange="onPricingChange(this)">');
-    rows.push('<span style="font-size:.63rem;color:var(--txtmu)">for delivery fee</span></div>');
-  }
-  if(model.type==='app'){
-    rows.push('<div class="pricing-input-row"><label style="display:flex;align-items:center;gap:7px;font-size:.72rem;color:var(--txtm);cursor:pointer">');
-    rows.push('<input type="checkbox" '+(pr.smallDev?'checked':'')+' data-iid="'+iid+'" data-field="smallDev" onchange="onPricingCheckbox(this)"> Small Business Program (15% cut)</label></div>');
-  }
+  rows.push('<div class="pricing-method"><div class="pricing-method-hdr"><span class="pricing-method-title">③ Platform Royalty (Backward)</span><span class="pricing-method-result">'+(royaltyListPrice?c+royaltyListPrice.toFixed(2)+(model.type==='kdp'?'<span class="pricing-tier-pill '+tierCls+'">'+tierLabel+'</span>':''):'—')+'</span></div>');
+  rows.push('<div class="pricing-input-row"><span class="pricing-input-lbl">Target take-home / sale</span><input class="pricing-inp" type="number" min="0" step="0.01" placeholder="e.g. 2.50" value="'+(pr.targetTakeHome||'')+'" data-iid="'+iid+'" data-field="targetTakeHome" onchange="onPricingChange(this)"></div>');
+  if(model.type==='kdp'){rows.push('<div class="pricing-input-row"><span class="pricing-input-lbl">Ebook file size (MB)</span><input class="pricing-inp" type="number" min="0" step="0.1" placeholder="2" value="'+(pr.fileSizeMb||2)+'" data-iid="'+iid+'" data-field="fileSizeMb" onchange="onPricingChange(this)"><span style="font-size:.63rem;color:var(--txtmu)">for delivery fee</span></div>');}
+  if(model.type==='app'){rows.push('<div class="pricing-input-row"><label style="display:flex;align-items:center;gap:7px;font-size:.72rem;color:var(--txtm);cursor:pointer"><input type="checkbox" '+(pr.smallDev?'checked':'')+' data-iid="'+iid+'" data-field="smallDev" onchange="onPricingCheckbox(this)"> Small Business Program (15% cut)</label></div>');}
   if(royaltyNote)rows.push('<div class="pricing-note">'+royaltyNote+'</div>');
   if(royaltyBreakdown)rows.push('<div class="pricing-breakdown">'+royaltyBreakdown+'</div>');
   rows.push('</div>');
 
-  // Notes
-  rows.push('<div style="margin-top:4px"><label class="mlbl">Pricing Notes</label>');
-  rows.push('<textarea class="minp" rows="3" style="resize:vertical" placeholder="Comp prices, launch strategy…" data-iid="'+iid+'" data-field="notes" onblur="onPricingChange(this)">'+esc(pr.notes||'')+'</textarea></div>');
-  rows.push('<div style="margin-top:18px"><button style="padding:8px 14px;border-radius:var(--rs);border:1.5px solid var(--bdr);background:transparent;color:var(--rose);font-family:\'Nunito\',sans-serif;font-size:.72rem;font-weight:600;cursor:pointer" onclick="'+delFn+'">Delete Item</button></div>');
-  rows.push('</div>');
-  return rows.join('\n');
+  rows.push.apply(rows,pricingNotesAndDelete(pr,iid,delFn));
+  return rows;
 }
 
-// Unified pricing input handler (uses data attributes — no inline quote nesting)
+// ── SUBSCRIPTION PRICING ──
+function renderSubscriptionPricing(item,pr,pnl,model,platName,c,iid,delFn){
+  const rows=[];
+  const totalCosts=pnl.totalCosts;
+  const subs=parseFloat(pr.subExpectedSubs)||0;
+  const retMonths=parseFloat(pr.subAvgRetention)||12;
+  const targetMRR=parseFloat(pr.subTargetMRR)||0;
+  const targetTakeHome=parseFloat(pr.targetTakeHome)||0;
+  const smallDev=pr.smallDev||false;
+  const markup=parseFloat(pr.markupMultiplier)||3;
+  const paybackMonths=parseFloat(pr.targetMonths)||6;
+
+  // Calc suggestions
+  let cpMonthly=null,cpNote='';
+  if(totalCosts>0&&subs>0){
+    // Amortize costs over lifetime: costs / (subs * retention) * markup = min monthly
+    cpMonthly=(totalCosts/(subs*retMonths))*markup;
+    cpNote=c+totalCosts.toFixed(2)+' costs ÷ ('+subs+' subs × '+retMonths+' mo retention) × '+markup+'× = '+c+cpMonthly.toFixed(2)+'/mo';
+  } else if(totalCosts>0){ cpNote='Enter expected subscribers and avg retention below'; }
+  else { cpNote='No costs logged on the P&L tab yet'; }
+
+  let paybackMonthly=null,pbNote='';
+  if(totalCosts>0&&subs>0){
+    paybackMonthly=totalCosts/(paybackMonths*subs);
+    pbNote='Recover '+c+totalCosts.toFixed(2)+' in '+paybackMonths+' months with '+subs+' subscribers. Min: '+c+paybackMonthly.toFixed(2)+'/mo per subscriber';
+  } else if(totalCosts===0){ pbNote='Add costs on P&L tab to use this calculator'; }
+  else { pbNote='Enter expected subscribers below'; }
+
+  let mrrMonthly=null,mrrNote='';
+  if(targetMRR>0&&subs>0){
+    mrrMonthly=targetMRR/subs;
+    mrrNote='To hit '+c+targetMRR.toFixed(2)+' MRR with '+subs+' subscribers: '+c+mrrMonthly.toFixed(2)+'/mo each';
+  }
+
+  // Royalty backward for subscription
+  let royaltyMonthly=null,royaltyNote='',royaltyBreakdown='';
+  if(targetTakeHome>0){
+    if(model.type==='app'){
+      royaltyMonthly=appPriceForNet(targetTakeHome,smallDev);
+      royaltyBreakdown=calcAppNet(royaltyMonthly,smallDev).breakdown;
+    } else if(model.type==='etsy'){
+      royaltyMonthly=etsyPriceForNet(targetTakeHome);
+      royaltyBreakdown=calcEtsyNet(royaltyMonthly).breakdown;
+    } else {
+      const cut=parseFloat(model.cutPct)||0,flat=parseFloat(model.flatFee)||0;
+      royaltyMonthly=genericPriceForNet(targetTakeHome,cut,flat);
+      let fd='';if(cut>0&&flat>0)fd=cut+'% + $'+flat.toFixed(2)+' flat';else if(cut>0)fd=cut+'% fee';else if(flat>0)fd='$'+flat.toFixed(2)+' flat';
+      royaltyNote=fd?'After '+fd+' per charge':'No platform fee set — configure in Settings → Platforms';
+      if(cut>0||flat>0)royaltyBreakdown=calcGenericNet(royaltyMonthly,cut,flat).breakdown;
+    }
+  }
+
+  const suggestions=[];
+  if(cpMonthly)suggestions.push(cpMonthly);
+  if(paybackMonthly)suggestions.push(paybackMonthly);
+  if(mrrMonthly)suggestions.push(mrrMonthly);
+  if(royaltyMonthly)suggestions.push(royaltyMonthly);
+  const recLow=suggestions.length?Math.min(...suggestions):null;
+  const recHigh=suggestions.length?Math.max(...suggestions):null;
+
+  // Saved prices
+  const savedMonthly=pr.subMonthlyPrice?parseFloat(pr.subMonthlyPrice).toFixed(2):'';
+  const savedAnnual=pr.subAnnualPrice?parseFloat(pr.subAnnualPrice).toFixed(2):'';
+  const autoAnnual=savedMonthly?( parseFloat(savedMonthly)*12*0.80).toFixed(2):'';// 20% annual discount suggestion
+
+  // LTV
+  const ltv=savedMonthly&&retMonths?(parseFloat(savedMonthly)*retMonths).toFixed(2):null;
+  const currentMRR=savedMonthly&&subs?(parseFloat(savedMonthly)*subs).toFixed(2):null;
+
+  // Banner
+  rows.push('<div class="pricing-rec">');
+  rows.push('<div class="pricing-rec-lbl">Suggested Monthly Price</div>');
+  if(suggestions.length>=2) rows.push('<div class="pricing-rec-range">'+c+recLow.toFixed(2)+' – '+c+recHigh.toFixed(2)+'<span style="font-size:.7rem;color:var(--txtmu)"> /mo</span></div><div class="pricing-rec-sub">'+suggestions.length+' methods · your judgment wins</div>');
+  else if(suggestions.length===1) rows.push('<div class="pricing-rec-range">'+c+suggestions[0].toFixed(2)+'<span style="font-size:.7rem;color:var(--txtmu)"> /mo</span></div><div class="pricing-rec-sub">Complete more fields for a range</div>');
+  else rows.push('<div class="pricing-rec-range" style="font-size:1rem;color:var(--txtmu)">Fill in the fields below</div>');
+
+  // Two saved price fields side by side
+  rows.push('<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">');
+  rows.push('<div class="pricing-saved-row" style="flex-direction:column;align-items:flex-start;gap:3px"><span class="pricing-saved-lbl">Monthly price</span><input class="pricing-inp pricing-inp-wide" type="number" step="0.01" min="0" placeholder="0.00" value="'+savedMonthly+'" data-iid="'+iid+'" data-field="subMonthlyPrice" onchange="onPricingChange(this)" style="width:100%"></div>');
+  rows.push('<div class="pricing-saved-row" style="flex-direction:column;align-items:flex-start;gap:3px"><span class="pricing-saved-lbl">Annual price</span><input class="pricing-inp pricing-inp-wide" type="number" step="0.01" min="0" placeholder="0.00" value="'+savedAnnual+'" data-iid="'+iid+'" data-field="subAnnualPrice" onchange="onPricingChange(this)" style="width:100%"></div>');
+  rows.push('</div>');
+  if(autoAnnual)rows.push('<div style="font-size:.62rem;color:var(--txtmu);margin-top:5px">💡 Common annual pricing: '+c+autoAnnual+' (20% discount on monthly × 12)</div>');
+  rows.push('</div>');
+
+  // LTV / MRR summary cards
+  if(ltv||currentMRR){
+    rows.push('<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:12px">');
+    if(ltv)rows.push('<div class="pnl-card pnl-card-rev"><div class="pnl-card-lbl">Est. LTV</div><div class="pnl-card-val">'+c+ltv+'</div><div class="pnl-card-sub">'+retMonths+' mo retention</div></div>');
+    if(currentMRR)rows.push('<div class="pnl-card pnl-card-profit"><div class="pnl-card-lbl">Est. MRR</div><div class="pnl-card-val">'+c+currentMRR+'</div><div class="pnl-card-sub">at '+subs+' subs</div></div>');
+    if(savedAnnual&&subs)rows.push('<div class="pnl-card pnl-card-roi"><div class="pnl-card-lbl">Annual ARR</div><div class="pnl-card-val">'+c+(parseFloat(savedAnnual)*subs).toFixed(2)+'</div><div class="pnl-card-sub">at '+subs+' subs</div></div>');
+    rows.push('</div>');
+  }
+
+  // Platform note (KDP note doesn't apply to subscription)
+  if(model.type!=='kdp')rows.push(platFeeNote(model,platName,c));
+
+  // Shared inputs
+  rows.push('<div class="pricing-method" style="background:var(--bg);border-color:var(--bdrl)"><div class="pricing-method-title" style="margin-bottom:10px">Shared Inputs</div>');
+  rows.push('<div class="pricing-input-row"><span class="pricing-input-lbl">Expected subscribers</span><input class="pricing-inp" type="number" min="0" step="1" placeholder="e.g. 50" value="'+(pr.subExpectedSubs||'')+'" data-iid="'+iid+'" data-field="subExpectedSubs" onchange="onPricingChange(this)"></div>');
+  rows.push('<div class="pricing-input-row" style="margin-top:8px"><span class="pricing-input-lbl">Avg retention (months)</span><input class="pricing-inp" type="number" min="1" step="1" placeholder="12" value="'+(pr.subAvgRetention||12)+'" data-iid="'+iid+'" data-field="subAvgRetention" onchange="onPricingChange(this)"><span style="font-size:.63rem;color:var(--txtmu)">for LTV calc</span></div>');
+  rows.push('</div>');
+
+  // Method 1: cost-plus
+  rows.push('<div class="pricing-method"><div class="pricing-method-hdr"><span class="pricing-method-title">① Cost-Plus (Amortized)</span><span class="pricing-method-result">'+(cpMonthly?c+cpMonthly.toFixed(2)+'/mo':'—')+'</span></div>');
+  rows.push('<div class="pricing-input-row"><span class="pricing-input-lbl">Markup multiplier</span><input class="pricing-inp" type="number" min="1" step="0.5" placeholder="3" value="'+(pr.markupMultiplier||3)+'" data-iid="'+iid+'" data-field="markupMultiplier" onchange="onPricingChange(this)"><span style="font-size:.68rem;color:var(--txtmu)">× (costs ÷ subs ÷ retention)</span></div>');
+  rows.push('<div class="pricing-note">'+cpNote+'</div>');
+  if(totalCosts>0)rows.push('<div class="pricing-breakdown">P&L costs: <b>'+c+totalCosts.toFixed(2)+'</b>. Spread across all subscribers × retention period.</div>');
+  rows.push('</div>');
+
+  // Method 2: payback
+  rows.push('<div class="pricing-method"><div class="pricing-method-hdr"><span class="pricing-method-title">② Cost Payback</span><span class="pricing-method-result">'+(paybackMonthly?c+paybackMonthly.toFixed(2)+'/mo':'—')+'</span></div>');
+  rows.push('<div class="pricing-input-row"><span class="pricing-input-lbl">Break-even in (months)</span><input class="pricing-inp" type="number" min="1" step="1" placeholder="6" value="'+(pr.targetMonths||6)+'" data-iid="'+iid+'" data-field="targetMonths" onchange="onPricingChange(this)"></div>');
+  rows.push('<div class="pricing-note">'+pbNote+'</div></div>');
+
+  // Method 3: MRR target
+  rows.push('<div class="pricing-method"><div class="pricing-method-hdr"><span class="pricing-method-title">③ MRR Target</span><span class="pricing-method-result">'+(mrrMonthly?c+mrrMonthly.toFixed(2)+'/mo':'—')+'</span></div>');
+  rows.push('<div class="pricing-input-row"><span class="pricing-input-lbl">Target MRR</span><input class="pricing-inp pricing-inp-wide" type="number" min="0" step="50" placeholder="e.g. 500" value="'+(pr.subTargetMRR||'')+'" data-iid="'+iid+'" data-field="subTargetMRR" onchange="onPricingChange(this)"><span style="font-size:.63rem;color:var(--txtmu)">/month goal</span></div>');
+  rows.push('<div class="pricing-note">'+mrrNote+'</div></div>');
+
+  // Method 4: platform royalty backward (per charge)
+  rows.push('<div class="pricing-method"><div class="pricing-method-hdr"><span class="pricing-method-title">④ Platform Royalty (Backward)</span><span class="pricing-method-result">'+(royaltyMonthly?c+royaltyMonthly.toFixed(2)+'/mo':'—')+'</span></div>');
+  rows.push('<div class="pricing-input-row"><span class="pricing-input-lbl">Target take-home / charge</span><input class="pricing-inp" type="number" min="0" step="0.01" placeholder="e.g. 5.00" value="'+(pr.targetTakeHome||'')+'" data-iid="'+iid+'" data-field="targetTakeHome" onchange="onPricingChange(this)"></div>');
+  if(model.type==='app')rows.push('<div class="pricing-input-row"><label style="display:flex;align-items:center;gap:7px;font-size:.72rem;color:var(--txtm);cursor:pointer"><input type="checkbox" '+(pr.smallDev?'checked':'')+' data-iid="'+iid+'" data-field="smallDev" onchange="onPricingCheckbox(this)"> Small Business Program (15% cut)</label></div>');
+  if(royaltyNote)rows.push('<div class="pricing-note">'+royaltyNote+'</div>');
+  if(royaltyBreakdown)rows.push('<div class="pricing-breakdown">'+royaltyBreakdown+'</div>');
+  if(model.type==='kdp')rows.push('<div class="pricing-note" style="color:var(--gold)">KDP does not support subscription pricing — use One-Time mode for KDP products.</div>');
+  rows.push('</div>');
+
+  rows.push.apply(rows,pricingNotesAndDelete(pr,iid,delFn));
+  return rows;
+}
+
+// ── SHARED HELPERS ──
+function platFeeNote(model,platName,c){
+  if(model.type==='kdp') return '<div class="pricing-platform-note">KDP: 70% royalty at $2.99–$9.99 · 35% outside that · $0.15/MB delivery fee deducted</div>';
+  if(model.type==='etsy') return '<div class="pricing-platform-note">Etsy: 6.5% transaction + $0.20 listing + ~3.5% payment processing</div>';
+  if(model.type==='app') return '<div class="pricing-platform-note">App Store / Play Store: 30% cut (15% Small Business Program)</div>';
+  if(model.cutPct||model.flatFee){
+    const fp=[];if(model.cutPct)fp.push(model.cutPct+'%');if(model.flatFee)fp.push(c+parseFloat(model.flatFee).toFixed(2)+' flat');
+    return '<div class="pricing-platform-note">'+esc(platName)+': '+fp.join(' + ')+' per sale</div>';
+  }
+  return '<div class="pricing-platform-note" style="color:var(--gold);border-color:var(--gold-l);background:var(--gold-p)">'+esc(platName)+': No platform fee set · <span style="cursor:pointer;text-decoration:underline" onclick="setTopTab(\'settings\')">Set in Settings → Platforms</span></div>';
+}
+
+function pricingNotesAndDelete(pr,iid,delFn){
+  return [
+    '<div style="margin-top:4px"><label class="mlbl">Pricing Notes</label>',
+    '<textarea class="minp" rows="3" style="resize:vertical" placeholder="Comp prices, launch strategy, trial offer…" data-iid="'+iid+'" data-field="notes" onblur="onPricingChange(this)">'+esc(pr.notes||'')+'</textarea></div>',
+    '<div style="margin-top:18px"><button style="padding:8px 14px;border-radius:var(--rs);border:1.5px solid var(--bdr);background:transparent;color:var(--rose);font-family:\'Nunito\',sans-serif;font-size:.72rem;font-weight:600;cursor:pointer" onclick="'+delFn+'">Delete Item</button></div>',
+  ];
+}
+
 function onPricingChange(el){
   const iid=el.dataset.iid;const field=el.dataset.field;
   const val=el.type==='number'?(parseFloat(el.value)||null):el.value;
   savePricingField(iid,field,val);
-  if(field!=='notes'&&field!=='savedPrice'){
+  if(field!=='notes'){
     refreshPricingCalcs(iid);
-  } else if(field==='savedPrice'){
-    const d=document.getElementById('psd-'+iid);
-    const c=DB.settings&&DB.settings.currency||'$';
-    if(d)d.textContent=val?c+parseFloat(val).toFixed(2):'Not set';
   }
+}
+function onPricingToggle(el){
+  // Pricing type switch: onetime / subscription
+  const iid=el.dataset.iid;const val=el.dataset.val;
+  savePricingField(iid,'pricingType',val);
+  refreshPricingCalcs(iid);
 }
 function onPricingCheckbox(el){
   const iid=el.dataset.iid;const field=el.dataset.field;
