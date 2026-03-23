@@ -3098,9 +3098,16 @@ function calcAppNet(price,smallDev){
   const p=parseFloat(price)||0;const cut=smallDev?0.15:0.30;const net=p*(1-cut);
   return{net,breakdown:`${p.toFixed(2)} \u00d7 ${smallDev?85:70}% (${smallDev?15:30}% cut) = <b>${net.toFixed(2)}</b>`};
 }
-function calcGenericNet(price,cutPct){
-  const p=parseFloat(price)||0;const cut=(parseFloat(cutPct)||0)/100;const net=p*(1-cut);
-  return{net,breakdown:`${p.toFixed(2)} \u00d7 ${(100-cutPct).toFixed(1)}% = <b>${net.toFixed(2)}</b>`};
+function calcGenericNet(price,cutPct,flatFee){
+  const p=parseFloat(price)||0;
+  const cut=(parseFloat(cutPct)||0)/100;
+  const flat=parseFloat(flatFee)||0;
+  const net=p*(1-cut)-flat;
+  let parts=[];
+  if(cut>0) parts.push((cutPct).toFixed(1)+'% fee: '+p.toFixed(2)+'\u00d7'+(1-cut).toFixed(3)+'='+( p*(1-cut)).toFixed(2));
+  if(flat>0) parts.push('flat fee: \u2212'+flat.toFixed(2));
+  const breakdown=(parts.length?parts.join(' \u00b7 ')+' = ':'')+'<b>'+net.toFixed(2)+'</b> net';
+  return{net,breakdown};
 }
 function kdpPriceForNet(targetNet,fileSizeMb){
   const mb=parseFloat(fileSizeMb)||0;
@@ -3111,7 +3118,12 @@ function kdpPriceForNet(targetNet,fileSizeMb){
 }
 function etsyPriceForNet(targetNet){ return (targetNet+0.45)/0.905; }
 function appPriceForNet(targetNet,smallDev){ return targetNet/(smallDev?0.85:0.70); }
-function genericPriceForNet(targetNet,cutPct){ const cut=(parseFloat(cutPct)||0)/100;return cut>=1?targetNet:targetNet/(1-cut); }
+function genericPriceForNet(targetNet,cutPct,flatFee){
+  // price*(1-cut) - flatFee = targetNet  →  price = (targetNet + flatFee) / (1 - cut)
+  const cut=(parseFloat(cutPct)||0)/100;
+  const flat=parseFloat(flatFee)||0;
+  return cut>=1?targetNet+flat:(targetNet+flat)/(1-cut);
+}
 
 function getPricing(item){ return item.pricing||{}; }
 
@@ -3180,9 +3192,14 @@ function renderPricingTab(item,delFn){
       const check=calcAppNet(royaltyListPrice,smallDev);royaltyBreakdown=check.breakdown;
     } else {
       const cut=parseFloat(model.cutPct)||0;
-      royaltyListPrice=genericPriceForNet(targetTakeHome,cut);
-      royaltyNote=cut>0?'After '+cut+'% platform fee':'No platform fee set — configure in Settings';
-      if(cut>0){const check=calcGenericNet(royaltyListPrice,cut);royaltyBreakdown=check.breakdown;}
+      const flat=parseFloat(model.flatFee)||0;
+      royaltyListPrice=genericPriceForNet(targetTakeHome,cut,flat);
+      let feeDesc='';
+      if(cut>0&&flat>0)feeDesc=cut+'% + $'+flat.toFixed(2)+' flat';
+      else if(cut>0)feeDesc=cut+'% fee';
+      else if(flat>0)feeDesc='$'+flat.toFixed(2)+' flat fee';
+      royaltyNote=feeDesc?'After '+feeDesc:'No platform fee set — configure in Settings → Platforms';
+      if(cut>0||flat>0){const check=calcGenericNet(royaltyListPrice,cut,flat);royaltyBreakdown=check.breakdown;}
     }
   }
 
@@ -3222,7 +3239,12 @@ function renderPricingTab(item,delFn){
   if(model.type==='kdp') rows.push('<div class="pricing-platform-note">KDP: 70% royalty at $2.99–$9.99 · 35% outside that · $0.15/MB delivery fee deducted</div>');
   else if(model.type==='etsy') rows.push('<div class="pricing-platform-note">Etsy: 6.5% transaction + $0.20 listing + ~3.5% payment processing</div>');
   else if(model.type==='app') rows.push('<div class="pricing-platform-note">App Store / Play Store: 30% cut (15% Small Business Program)</div>');
-  else if(model.cutPct) rows.push('<div class="pricing-platform-note">'+esc(platName)+': '+model.cutPct+'% platform fee configured</div>');
+  else if(model.cutPct||model.flatFee){
+    const feeParts=[];
+    if(model.cutPct)feeParts.push(model.cutPct+'%');
+    if(model.flatFee)feeParts.push(c+parseFloat(model.flatFee).toFixed(2)+' flat');
+    rows.push('<div class="pricing-platform-note">'+esc(platName)+': '+feeParts.join(' + ')+' per sale configured</div>');
+  }
   else rows.push('<div class="pricing-platform-note" style="color:var(--gold);border-color:var(--gold-l);background:var(--gold-p)">'+esc(platName)+': No platform fee set · <span style="cursor:pointer;text-decoration:underline" onclick="setTopTab(\'settings\')">Set in Settings → Platforms</span></div>');
 
   // Shared inputs — use data attributes for all oninput handlers
@@ -3313,14 +3335,33 @@ function refreshPricingCalcs(itemId){
 function renderPlatformCutPctField(platId){
   const p=getPlatform(platId);if(!p)return'';
   if(p.pricingModel&&['kdp','etsy','app'].includes(p.pricingModel.type))return'';
-  const cut=p.pricingModel&&p.pricingModel.cutPct!=null?p.pricingModel.cutPct:'';
-  return`<div style="margin-top:10px"><label style="display:block;font-size:.62rem;font-weight:800;color:var(--txtm);letter-spacing:.07em;text-transform:uppercase;margin-bottom:4px">Platform Fee %</label><div style="display:flex;align-items:center;gap:8px"><input class="minp" type="number" min="0" max="100" step="0.1" style="width:90px" placeholder="e.g. 30" value="${cut}" oninput="savePlatCutPct('${platId}',this.value)"><span style="font-size:.68rem;color:var(--txtmu)">% platform takes per sale</span></div><div style="font-size:.62rem;color:var(--txtmu);margin-top:4px">Used in Pricing Suggestor to calculate required list price from target take-home.</div></div>`;
+  const pm=p.pricingModel||{};
+  const cut=pm.cutPct!=null?pm.cutPct:'';
+  const flat=pm.flatFee!=null?pm.flatFee:'';
+  const c=DB.settings&&DB.settings.currency||'$';
+  return '<div style="margin-top:12px;padding:12px 14px;background:var(--bg);border-radius:var(--rs);border:1px solid var(--bdrl)">'
+    +'<div style="font-size:.62rem;font-weight:800;color:var(--txtm);letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px">Platform Fee Structure (for Pricing Suggestor)</div>'
+    +'<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px">'
+    +'<div style="display:flex;align-items:center;gap:6px">'
+    +'<input class="minp" type="number" min="0" max="100" step="0.1" style="width:80px" placeholder="0" value="'+cut+'" oninput="savePlatFeeModel(\''+platId+'\',\'cutPct\',this.value)">'
+    +'<span style="font-size:.72rem;color:var(--txtmu)">% of sale price</span>'
+    +'</div>'
+    +'<span style="font-size:.68rem;color:var(--txtmu)">+</span>'
+    +'<div style="display:flex;align-items:center;gap:6px">'
+    +'<input class="minp" type="number" min="0" step="0.01" style="width:80px" placeholder="0.00" value="'+flat+'" oninput="savePlatFeeModel(\''+platId+'\',\'flatFee\',this.value)">'
+    +'<span style="font-size:.72rem;color:var(--txtmu)">'+c+' flat fee per sale</span>'
+    +'</div>'
+    +'</div>'
+    +'<div style="font-size:.61rem;color:var(--txtmu);line-height:1.5">Enter whichever apply — percentage, flat fee, or both. Net = price × (1 − %) − flat fee.</div>'
+    +(cut||flat?'<div style="font-size:.65rem;color:var(--lav);margin-top:5px;font-weight:600">Example: $10 sale → net $'+calcGenericNet(10,parseFloat(cut)||0,parseFloat(flat)||0).net.toFixed(2)+'</div>':'')
+    +'</div>';
 }
 
-function savePlatCutPct(platId,val){
+function savePlatCutPct(platId,val){savePlatFeeModel(platId,'cutPct',val);}
+function savePlatFeeModel(platId,field,val){
   const p=getPlatform(platId);if(!p)return;
   if(!p.pricingModel)p.pricingModel={type:'generic'};
-  p.pricingModel.cutPct=parseFloat(val)||0;
+  p.pricingModel[field]=parseFloat(val)||0;
   clearTimeout(window._platCutTimer);
   window._platCutTimer=setTimeout(()=>savePlatforms(),1200);
 }
