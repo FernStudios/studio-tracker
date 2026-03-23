@@ -48,6 +48,8 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--txt);displ
 .tree::-webkit-scrollbar{width:3px}
 .tree::-webkit-scrollbar-thumb{background:var(--lav-l);border-radius:3px}
 .p-row{display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:var(--rs);cursor:pointer;margin-bottom:2px;border:1.5px solid transparent;transition:all .18s}
+.p-row-hold{opacity:.55;border:1.5px dashed var(--gold-l)!important;background:var(--gold-xp,#fdf9f2)!important}
+.hold-badge{font-size:.52rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);background:var(--gold-p);border:1px solid var(--gold-l);padding:1px 6px;border-radius:10px;flex-shrink:0}
 .p-row:hover{background:var(--s2)}
 .p-row.pa{background:var(--gold-p);border-color:var(--gold-l)}
 .caret{font-size:.6rem;color:var(--txtmu);transition:transform .2s;flex-shrink:0;width:11px;text-align:center}
@@ -1605,12 +1607,13 @@ function renderTree(){
     if(!visible&&filter!=='all')return;
     const pct=projPct(pr);
     const isSel=SEL.type==='proj'&&SEL.projId===pr.id;
-    h+=`<div class="p-row${isSel?' pa':''}" onclick="selProj('${pr.id}')">
+    h+=`<div class="p-row${isSel?' pa':''}${pr.onHold?' p-row-hold':''}" onclick="selProj('${pr.id}')">
       <span class="caret${pr.collapsed?'':' open'}" onclick="toggleProjCollapse('${pr.id}',event)">▶</span>
       <div style="flex:1;min-width:0">
         <div class="p-name">${esc(pr.title)}</div>
-        <div class="p-bar-wrap"><div class="p-bar" style="width:${pct}%"></div></div>
+        <div class="p-bar-wrap"><div class="p-bar" style="width:${pct}%;background:${pr.onHold?'var(--gold)':'var(--gold)'}"></div></div>
       </div>
+      ${pr.onHold?'<span class="hold-badge">Hold</span>':''}
       <span class="p-pct">${pct}%</span>
     </div>`;
     if(!pr.collapsed){
@@ -1845,7 +1848,10 @@ function renderProjDash(el,pr){
   const projPerf=rollupPerf(allItems);
   h+=`</div>${renderPerfRollup(projPerf,'var(--gold)')}`;
   h+=renderNotesSection('proj',pr.id,pr.notes||[]);
-  h+=`<div style="margin-top:14px"><button style="padding:8px 14px;border-radius:var(--rs);border:1.5px solid var(--bdr);background:transparent;color:var(--rose);font-family:'Nunito',sans-serif;font-size:.72rem;font-weight:600;cursor:pointer" onclick="deleteProj('${pr.id}')">Delete Project</button></div></div>`;
+  h+=`<div style="margin-top:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <button style="padding:8px 14px;border-radius:var(--rs);border:1.5px solid ${pr.onHold?'var(--sage)':'var(--gold-l)'};background:${pr.onHold?'var(--sage-p)':'var(--gold-p)'};color:${pr.onHold?'var(--sage)':'var(--gold)'};font-family:'Nunito',sans-serif;font-size:.72rem;font-weight:700;cursor:pointer" onclick="toggleProjectHold('${pr.id}')">${pr.onHold?'▶ Resume Project':'⏸ Put On Hold'}</button>
+    <button style="padding:8px 14px;border-radius:var(--rs);border:1.5px solid var(--bdr);background:transparent;color:var(--rose);font-family:'Nunito',sans-serif;font-size:.72rem;font-weight:600;cursor:pointer" onclick="deleteProj('${pr.id}')">Delete Project</button>
+  </div></div>`;
   el.innerHTML=h;
 }
 
@@ -4243,6 +4249,17 @@ function saveIdeaFromSidebar(){
   fdb.collection('ideas').doc(idea.id).set(idea).then(syncDone).catch(e=>syncFail('Idea save failed:'+e.message));
   renderTree();
   showToast('Idea saved!');
+}
+
+function toggleProjectHold(projId){
+  const pr=DB.projects.find(p=>p.id===projId);if(!pr)return;
+  pr.onHold=!pr.onHold;
+  renderAll();
+  syncStart();
+  fdb.collection('projects').doc(projId).update({onHold:pr.onHold})
+    .then(syncDone)
+    .catch(e=>syncFail('Could not update project: '+e.message));
+  showToast(pr.onHold?'Project put on hold.':'Project resumed.');
 }
 function checkOnboarding(){
   const hasProjects=DB.projects.filter(p=>!p._hidden).length>0;
